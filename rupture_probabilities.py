@@ -107,8 +107,8 @@ if __name__ == "__main__":
 	grid_outline = (-74, -72, -46, -44.5)
 	grid_spacing = 0.1
 	dM = 0.25
-	#min_mag, max_mag = 6.0 - dM/2, 7.5
-	min_mag, max_mag = 6.25 - dM/2, 6.25 + dM/2
+	min_mag, max_mag = 6.0 - dM/2, 7.5
+	#min_mag, max_mag = 6.25 - dM/2, 6.25 + dM/2
 	trt = "ASC"
 	strike, dip, rake = 20, 90, 180
 	depth = 5
@@ -123,8 +123,8 @@ if __name__ == "__main__":
 								trt, usd, lsd, rar, msr, rms)
 
 	## Construct ground-motion model
-	#ipe_name = "AtkinsonWald2007"
-	ipe_name = "BakunWentworth1997WithSigma"
+	ipe_name = "AtkinsonWald2007"
+	#ipe_name = "BakunWentworth1997WithSigma"
 	trt_gsim_dict = {trt: ipe_name}
 	ground_motion_model = rshalib.gsim.GroundMotionModel(ipe_name, trt_gsim_dict)
 	truncation_level = 2.5
@@ -144,8 +144,8 @@ if __name__ == "__main__":
 	ne_thresholds = [7.0]
 	"""
 
-	event = "2007"
-	filespec = "%s_polygons.txt" % event
+	event, version = "2007", 2
+	filespec = "%s_polygons_v%d.txt" % (event, version)
 	polygon_discretization = 2.5
 	(pe_thresholds, pe_site_models,
 	ne_thresholds, ne_site_models) = read_evidence_site_info(filespec, polygon_discretization)
@@ -213,23 +213,25 @@ if __name__ == "__main__":
 
 	## Negative evidence
 	for ne_site_model in ne_site_models:
-		ne_style = lbm.PointStyle('_', size=8, line_width=1, line_color='m')
+		ne_style = lbm.PointStyle('_', size=8, line_width=1, line_color='c')
 		ne_data = lbm.MultiPointData(ne_site_model.lons, ne_site_model.lats)
 		layer = lbm.MapLayer(ne_data, ne_style)
 		layers.append(layer)
 
 	title = "Event: %s, IPE: %s, %s sigma" % (event, ipe_name, truncation_level)
 	fig_filename = "%s_%s_%ssigma" % (event, ipe_name, truncation_level)
-	fig_filename += "_M=6.25"
+	#fig_filename += "_M=6.25"
+	fig_filename += "_Mrange"
 	if strict_intersection:
 		title += ", strict"
 		fig_filename += "_strict"
-	fig_filename += ".PNG"
+	fig_filename += "_v%d.PNG" % version
 
-	fig_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
+	#fig_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
+	fig_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
 	fig_filespec = os.path.join(fig_folder, fig_filename)
 	#fig_filespec = None
 
 	map = lbm.LayeredBasemap(layers, title, "merc", region=grid_outline,
 							graticule_interval=(1, 0.5), resolution='h')
-	map.plot(fig_filespec=fig_filespec)
+	map.plot(fig_filespec=fig_filespec, dpi=200)
