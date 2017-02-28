@@ -2,6 +2,7 @@
 import os
 import numpy as np
 import matplotlib
+import pylab
 import mapping.Basemap as lbm
 import openquake.hazardlib as oqhazlib
 import hazard.rshalib as rshalib
@@ -99,12 +100,14 @@ def read_evidence_site_info(filespec, polygon_discretization=5):
 		site_model = polygon_to_site_model(ne_polygon, name, polygon_discretization)
 		ne_site_models.append(site_model)
 
+	pe_thresholds, ne_thresholds = np.array(pe_thresholds), np.array(ne_thresholds)
 	return pe_thresholds, pe_site_models, ne_thresholds, ne_site_models
 
 
 if __name__ == "__main__":
 	## Construct uniform grid source model
 	grid_outline = (-74, -72, -46, -44.5)
+	#grid_outline = (-73, -73, -45.4, -45.4)
 	grid_spacing = 0.1
 	dM = 0.25
 	min_mag, max_mag = 6.0 - dM/2, 7.5
@@ -123,8 +126,9 @@ if __name__ == "__main__":
 								trt, usd, lsd, rar, msr, rms)
 
 	## Construct ground-motion model
-	ipe_name = "AtkinsonWald2007"
-	#ipe_name = "BakunWentworth1997WithSigma"
+	#ipe_name = "AtkinsonWald2007"
+	ipe_name = "BakunWentworth1997WithSigma"
+	#ipe_name = "AllenEtAl2012Rhypo"
 	trt_gsim_dict = {trt: ipe_name}
 	ground_motion_model = rshalib.gsim.GroundMotionModel(ipe_name, trt_gsim_dict)
 	truncation_level = 2.5
@@ -144,8 +148,8 @@ if __name__ == "__main__":
 	ne_thresholds = [7.0]
 	"""
 
-	event, version = "2007", 2
-	filespec = "%s_polygons_v%d.txt" % (event, version)
+	event, version = "2007", "2"
+	filespec = "%s_polygons_v%s.txt" % (event, version)
 	polygon_discretization = 2.5
 	(pe_thresholds, pe_site_models,
 	ne_thresholds, ne_site_models) = read_evidence_site_info(filespec, polygon_discretization)
@@ -176,6 +180,20 @@ if __name__ == "__main__":
 			y.append(source.location.latitude)
 
 			print x[-1], y[-1], values['mag'][-1], prob_max
+	max_prob = np.max(values['prob'])
+	print("Max. probability: %.3f" % max_prob)
+	exit()
+
+	## Plot histogram of probabilities
+	"""
+	bin_width = 0.02
+	xmax = np.ceil(max_prob / bin_width) * bin_width
+	num_bins = xmax / bin_width + 1
+	bins = np.linspace(0, xmax, num_bins)
+	pylab.hist(values['prob'], bins=bins, log=False)
+	pylab.show()
+	"""
+
 
 	layers = []
 
@@ -193,7 +211,7 @@ if __name__ == "__main__":
 	colorbar_style = lbm.ColorbarStyle("Probability")
 	#thematic_color = lbm.ThematicStyleGradient([1E-3, 1E-2, 1E-1, 1], "RdBu_r", value_key='prob', colorbar_style=colorbar_style)
 	#thematic_color = lbm.ThematicStyleGradient([0.01, 0.05, 0.125, 0.25, 0.5, 1], "RdBu_r", value_key='prob', colorbar_style=colorbar_style)
-	thematic_color = lbm.ThematicStyleColormap("Reds", vmin=0.01, vmax=0.3, value_key='prob', colorbar_style=colorbar_style)
+	thematic_color = lbm.ThematicStyleColormap("Reds", vmin=0.01, vmax=1.0, value_key='prob', colorbar_style=colorbar_style)
 
 	edge_magnitudes = np.concatenate([source.mfd.get_magnitude_bin_edges(), [center_magnitudes[-1]+dM/2]])
 	mag_sizes = (center_magnitudes - 4) ** 2
@@ -218,14 +236,14 @@ if __name__ == "__main__":
 		layer = lbm.MapLayer(ne_data, ne_style)
 		layers.append(layer)
 
-	title = "Event: %s, IPE: %s, %s sigma" % (event, ipe_name, truncation_level)
+	title = "Event: %s v.%s, IPE: %s, %s sigma" % (event, version, ipe_name, truncation_level)
 	fig_filename = "%s_%s_%ssigma" % (event, ipe_name, truncation_level)
 	#fig_filename += "_M=6.25"
 	fig_filename += "_Mrange"
 	if strict_intersection:
 		title += ", strict"
 		fig_filename += "_strict"
-	fig_filename += "_v%d.PNG" % version
+	fig_filename += "_v%s.PNG" % version
 
 	#fig_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
 	fig_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
@@ -234,4 +252,8 @@ if __name__ == "__main__":
 
 	map = lbm.LayeredBasemap(layers, title, "merc", region=grid_outline,
 							graticule_interval=(1, 0.5), resolution='h')
-	map.plot(fig_filespec=fig_filespec, dpi=200)
+	if fig_filespec:
+		dpi = 200
+	else:
+		dpi = 90
+	map.plot(fig_filespec=fig_filespec, dpi=dpi)
