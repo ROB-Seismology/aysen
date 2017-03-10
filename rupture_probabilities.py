@@ -86,10 +86,15 @@ def read_fault_source_model_as_points(gis_filespec, min_mag, max_mag, dM, depth)
 
 	fault_somo = read_fault_source_model(gis_filespec, characteristic=False)
 	## Divide fault trace in points
-	point_sources = []
+	sources = []
 	for f, flt in enumerate(fault_somo.sources):
 		fault_surface = SimpleFaultSurface.from_fault_data(flt.fault_trace, USD, LSD, flt.dip, RMS)
 		fault_mesh = fault_surface.get_mesh()
+		surface_locations = fault_mesh[0:1]
+		#print surface_locations.lons
+		#print surface_locations.lats
+		#print flt.get_length()
+		#print (len(surface_locations) - 1) * RMS
 		mesh_rows, mesh_cols = fault_mesh.shape
 		hypo_depths = []
 		for j in range(1, mesh_rows-1):
@@ -110,20 +115,35 @@ def read_fault_source_model_as_points(gis_filespec, min_mag, max_mag, dM, depth)
 			name = "%s #%02d" % (flt.name, i+1)
 			ID = flt.source_id + "#%02d" % (i+1)
 
-			source = rshalib.source.PointSource(ID, name, TRT, mfd, RMS, MSR, RAR,
+			point_source = rshalib.source.PointSource(ID, name, TRT, mfd, RMS, MSR, RAR,
 												USD, LSD, hypocenter, npd, hdd)
 			## Check if rupture stays within fault limits
 			for mag in mfd.get_center_magnitudes():
-				rup_length, rup_width = source._get_rupture_dimensions(mag, nodal_plane)
+				rup_length, rup_width = point_source._get_rupture_dimensions(mag, nodal_plane)
 				if rup_length / 2 <= min(distance_to_start, distance_to_end):
-					source2 = deepcopy(source)
-					source2.mfd = rshalib.mfd.EvenlyDiscretizedMFD(mag, mfd.bin_width, [1])
-					source2.source_id = ID + "_M=%s" % mag
-					point_sources.append(source2)
+					pt_col = i + 0.5
+					rup_col_num = int(round(rup_length / RMS))
+					start_col = min(i, int(i - (rup_col_num / 2.)))
+					end_col = max(i, int(i + (rup_col_num / 2.)))
+					#rup_row_num = int(round(rup_width / RMS))
+					subfault_trace = list(surface_locations)[start_col:end_col+1]
+					subfault_trace = oqhazlib.geo.Line(subfault_trace)
+					subfault_mfd = rshalib.mfd.EvenlyDiscretizedMFD(mag, mfd.bin_width, [1])
+					subfault_source_id = ID + "_M=%s" % mag
+					subfault_lsd =  rup_width * np.cos(np.radians(90 - flt.dip))
+					subfault = rshalib.source.SimpleFaultSource(subfault_source_id, flt.name,
+									TRT, subfault_mfd, RMS, MSR, RAR, USD, subfault_lsd,
+									subfault_trace, flt.dip, flt.rake)
+
+					#subfault = deepcopy(point_source)
+					#subfault.mfd = rshalib.mfd.EvenlyDiscretizedMFD(mag, mfd.bin_width, [1])
+					#subfault.source_id = ID + "_M=%s" % mag
+
+					sources.append(subfault)
 				#print mag, rup_length/2, distance_to_start, distance_to_end
 
-	somo_name = fault_somo.name + "_pts)"
-	return rshalib.source.SourceModel(somo_name, point_sources)
+	somo_name = fault_somo.name + "_pts"
+	return rshalib.source.SourceModel(somo_name, sources)
 
 
 def read_evidence_site_info(filespec, polygon_discretization=5):
@@ -220,6 +240,7 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 					print x[-1], y[-1], values['mag'][-1], prob_max
 				else:
 					## Not sure this is correct if fault is not vertical
+					## Point source ruptures
 					[nodal_plane] = source.nodal_plane_distribution.nodal_planes
 					hypocenter = source.location
 					#hypocenter.depth = 0.1
@@ -232,6 +253,7 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 
 		max_prob = np.max(values['prob'])
 		print("Max. probability: %.3f" % max_prob)
+		"""
 		if not plot_point_ruptures:
 			source_data = lbm.MultiPointData(x, y, values=values)
 		else:
@@ -242,6 +264,7 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 			x = [x[idx] for idx in idxs]
 			y = [y[idx] for idx in idxs]
 			source_data = lbm.MultiLineData(x, y, values=values)
+		"""
 
 	else:
 		## Fault sources
@@ -249,12 +272,23 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 			fault = source_model[fault_id]
 			lons = np.array([pt.longitude for pt in fault.fault_trace.points])
 			lats = np.array([pt.latitude for pt in fault.fault_trace.points])
-			values['mag'].append(fault.mfd.char_mag)
+			values['mag'].append(fault.mfd.get_center_magnitudes()[0])
 			values['prob'].append(prob)
 			x.append(lons)
 			y.append(lats)
-		source_data = lbm.MultiLineData(x, y, values=values)
+		#source_data = lbm.MultiLineData(x, y, values=values)
 
+	## Reorder from lowest to highest probability
+	idxs = np.argsort(values['prob'])
+	values['prob'] = [values['prob'][idx] for idx in idxs]
+	values['mag'] = [values['mag'][idx] for idx in idxs]
+	x = [x[idx] for idx in idxs]
+	y = [y[idx] for idx in idxs]
+	source_data = lbm.MultiLineData(x, y, values=values)
+	if source_model.get_point_sources() and not plot_point_ruptures:
+		source_data = lbm.MultiPointData(x, y, values=values)
+	else:
+		source_data = lbm.MultiLineData(x, y, values=values)
 
 	## Plot histogram of probabilities
 	"""
@@ -331,6 +365,7 @@ if __name__ == "__main__":
 
 	dM = 0.25
 	min_mag, max_mag = 6.0 - dM/2, 6.75
+	print np.arange(min_mag, max_mag, dM) + dM/2
 	#min_mag, max_mag = 6.25 - dM/2, 6.25 + dM/2
 
 	#source_model = create_uniform_grid_source_model(grid_outline, grid_spacing,
@@ -338,9 +373,13 @@ if __name__ == "__main__":
 
 
 	## Read fault source model
-	gis_filespec = r"C:\Users\kris\Documents\Publications\2017 - Aysen\LOFZ_breukenmodel.shp"
-	#gis_filespec = r"C:\Users\kris\Documents\Publications\2017 - Aysen\EnergiAustral_faults.TAB"
-	#source_model = read_fault_source_model(gis_filespec)
+	#gis_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
+	gis_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
+
+	#gis_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel.shp")
+	gis_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel2.TAB")
+	#gis_filespec = os.path.join(gis_folder, "EnergiAustral_faults.TAB")
+	source_model = read_fault_source_model(gis_filespec)
 	#for flt in source_model:
 	#	print flt.source_id, flt.name, flt.mfd.char_mag, flt.mfd.max_mag
 
@@ -348,7 +387,7 @@ if __name__ == "__main__":
 	#	rup_cols, rup_rows = flt._get_rupture_dimensions(flt.get_length(), flt.get_width(), mag)
 	#	print mag, rup_cols, rup_rows
 
-	source_model = read_fault_source_model_as_points(gis_filespec, min_mag, max_mag, dM, depth=0.1)
+	#source_model = read_fault_source_model_as_points(gis_filespec, min_mag, max_mag, dM, depth=0.1)
 
 	## Construct ground-motion model
 	#ipe_name = "AtkinsonWald2007"
@@ -394,11 +433,12 @@ if __name__ == "__main__":
 	fig_filename += "_%s" % source_model.name
 	fig_filename += ".PNG"
 
-	fig_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
-	#fig_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
+	#fig_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
+	fig_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
 	fig_filespec = os.path.join(fig_folder, fig_filename)
-	fig_filespec = None
+	#fig_filespec = None
 
 	max_prob_color = 0.5
+	#max_prob_color = 1.0
 	plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
 								grid_outline, max_prob_color, plot_point_ruptures=True, fig_filespec=fig_filespec)
