@@ -253,18 +253,6 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 
 		max_prob = np.max(values['prob'])
 		print("Max. probability: %.3f" % max_prob)
-		"""
-		if not plot_point_ruptures:
-			source_data = lbm.MultiPointData(x, y, values=values)
-		else:
-			## Reorder from lowest to highest probability
-			idxs = np.argsort(values['prob'])
-			values['prob'] = [values['prob'][idx] for idx in idxs]
-			values['mag'] = [values['mag'][idx] for idx in idxs]
-			x = [x[idx] for idx in idxs]
-			y = [y[idx] for idx in idxs]
-			source_data = lbm.MultiLineData(x, y, values=values)
-		"""
 
 	else:
 		## Fault sources
@@ -276,7 +264,6 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 			values['prob'].append(prob)
 			x.append(lons)
 			y.append(lats)
-		#source_data = lbm.MultiLineData(x, y, values=values)
 
 	## Reorder from lowest to highest probability
 	idxs = np.argsort(values['prob'])
@@ -284,11 +271,27 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 	values['mag'] = [values['mag'][idx] for idx in idxs]
 	x = [x[idx] for idx in idxs]
 	y = [y[idx] for idx in idxs]
-	source_data = lbm.MultiLineData(x, y, values=values)
+
 	if source_model.get_point_sources() and not plot_point_ruptures:
 		source_data = lbm.MultiPointData(x, y, values=values)
 	else:
 		source_data = lbm.MultiLineData(x, y, values=values)
+		## Find rupture with highest probability for each magnitude
+		if source_model.get_fault_sources():
+			mag_max_prob_id_dict = {}
+			for idx in idxs:
+				mag = values['mag'][idx]
+				prob = values['prob'][idx]
+				if prob and (not mag in mag_max_prob_id_dict or prob > mag_max_prob_id_dict[mag][1]):
+					mag_max_prob_id_dict[mag] = (idx, prob)
+			max_source_data = None
+			for mag, (idx, prob) in mag_max_prob_id_dict.items():
+				line_data = source_data[int(idx)]
+				if not max_source_data:
+					max_source_data = line_data.to_multi_line()
+				else:
+					max_source_data.append(line_data)
+
 
 	## Plot histogram of probabilities
 	"""
@@ -331,6 +334,17 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 		layer = lbm.MapLayer(source_data, style)
 	layers.append(layer)
 
+	if source_model.get_fault_sources():
+		front_style = lbm.FrontStyle("asterisk", size=10, num_sides=1, angle=-45, interval=[0,1], alternate_sides=True)
+		style = lbm.LineStyle(line_width=0, front_style=front_style)
+		layer = lbm.MapLayer(max_source_data, style)
+		layers.append(layer)
+
+		front_style = lbm.FrontStyle("asterisk", size=12, num_sides=1, angle=-135, interval=[0,1], alternate_sides=True)
+		style = lbm.LineStyle(line_width=0, front_style=front_style)
+		layer = lbm.MapLayer(max_source_data, style)
+		layers.append(layer)
+
 	## Positive evidence
 	for pe_site_model in pe_site_models:
 		pe_style = lbm.PointStyle('+', size=8, line_width=1, line_color='m')
@@ -345,8 +359,10 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 		layer = lbm.MapLayer(ne_data, ne_style)
 		layers.append(layer)
 
+	scalebar_style = lbm.ScalebarStyle((-72.5, -45.9), 25, yoffset=2000)
 	map = lbm.LayeredBasemap(layers, title, "merc", region=region,
-							graticule_interval=(1, 0.5), resolution='h')
+							graticule_interval=(1, 0.5), resolution='h',
+							scalebar_style=scalebar_style)
 	if fig_filespec:
 		dpi = 200
 	else:
@@ -379,7 +395,7 @@ if __name__ == "__main__":
 	#gis_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel.shp")
 	gis_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel2.TAB")
 	#gis_filespec = os.path.join(gis_folder, "EnergiAustral_faults.TAB")
-	source_model = read_fault_source_model(gis_filespec)
+	#source_model = read_fault_source_model(gis_filespec)
 	#for flt in source_model:
 	#	print flt.source_id, flt.name, flt.mfd.char_mag, flt.mfd.max_mag
 
@@ -387,12 +403,12 @@ if __name__ == "__main__":
 	#	rup_cols, rup_rows = flt._get_rupture_dimensions(flt.get_length(), flt.get_width(), mag)
 	#	print mag, rup_cols, rup_rows
 
-	#source_model = read_fault_source_model_as_points(gis_filespec, min_mag, max_mag, dM, depth=0.1)
+	source_model = read_fault_source_model_as_points(gis_filespec, min_mag, max_mag, dM, depth=0.1)
 
 	## Construct ground-motion model
 	#ipe_name = "AtkinsonWald2007"
-	#ipe_name = "BakunWentworth1997WithSigma"
-	ipe_name = "AllenEtAl2012Rrup"
+	ipe_name = "BakunWentworth1997WithSigma"
+	#ipe_name = "AllenEtAl2012Rrup"
 	trt_gsim_dict = {TRT: ipe_name}
 	ground_motion_model = rshalib.gsim.GroundMotionModel(ipe_name, trt_gsim_dict)
 	truncation_level = 2.5
@@ -403,7 +419,7 @@ if __name__ == "__main__":
 
 
 	## Read lake evidence
-	event, version = "2007", "3b"
+	event, version = "2007", "2b"
 	filespec = "%s_polygons_v%s.txt" % (event, version)
 	polygon_discretization = 2.5
 	(pe_thresholds, pe_site_models,
@@ -435,10 +451,10 @@ if __name__ == "__main__":
 
 	#fig_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
 	fig_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
-	fig_filespec = os.path.join(fig_folder, fig_filename)
-	#fig_filespec = None
+	#fig_filespec = os.path.join(fig_folder, fig_filename)
+	fig_filespec = None
 
-	max_prob_color = 0.5
-	#max_prob_color = 1.0
+	#max_prob_color = 0.5
+	max_prob_color = 1.0
 	plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
 								grid_outline, max_prob_color, plot_point_ruptures=True, fig_filespec=fig_filespec)
