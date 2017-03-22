@@ -3,6 +3,7 @@ import os
 import numpy as np
 import matplotlib
 import pylab
+from mapping.geo.readGIS import read_GIS_file
 import mapping.Basemap as lbm
 import openquake.hazardlib as oqhazlib
 import hazard.rshalib as rshalib
@@ -77,7 +78,7 @@ def read_fault_source_model(gis_filespec, characteristic=True):
 	return somo
 
 
-def read_fault_source_model_as_points(gis_filespec, min_mag, max_mag, dM, depth):
+def read_fault_source_model_as_floating_ruptures(gis_filespec, min_mag, max_mag, dM, depth):
 	from copy import deepcopy
 	from openquake.hazardlib.geo.surface.simple_fault import SimpleFaultSurface
 
@@ -146,7 +147,24 @@ def read_fault_source_model_as_points(gis_filespec, min_mag, max_mag, dM, depth)
 	return rshalib.source.SourceModel(somo_name, sources)
 
 
-def read_evidence_site_info(filespec, polygon_discretization=5):
+def polygon_to_site_model(polygon, name, polygon_discretization):
+	if isinstance(polygon, oqhazlib.geo.Polygon):
+		try:
+			site_model = rshalib.site.SoilSiteModel.from_polygon(polygon,
+										polygon_discretization, name=name)
+		except:
+			polygon = lbm.PolygonData(polygon.lons, polygon.lats)
+			centroid = polygon.get_centroid()
+			site = rshalib.site.SoilSite(centroid.lon, centroid.lat)
+			site_model = rshalib.site.SoilSiteModel(name, [site])
+	else:
+		point = polygon
+		site = rshalib.site.SoilSite(point.longitude, point.latitude)
+		site_model = rshalib.site.SoilSiteModel(name, [site])
+	return site_model
+
+
+def read_evidence_site_info_from_txt(filespec, polygon_discretization=5):
 	pe_thresholds, ne_thresholds = [], []
 	pe_polygons, ne_polygons = [], []
 
@@ -182,21 +200,59 @@ def read_evidence_site_info(filespec, polygon_discretization=5):
 					else:
 						lats.append(deg)
 
-	def polygon_to_site_model(polygon, name, polygon_discretization):
-		if isinstance(polygon, oqhazlib.geo.Polygon):
-			try:
-				site_model = rshalib.site.SoilSiteModel.from_polygon(polygon,
-											polygon_discretization, name=name)
-			except:
-				polygon = lbm.PolygonData(polygon.lons, polygon.lats)
-				centroid = polygon.get_centroid()
-				site = rshalib.site.SoilSite(centroid.lon, centroid.lat)
-				site_model = rshalib.site.SoilSiteModel(name, [site])
-		else:
-			point = polygon
-			site = rshalib.site.SoilSite(point.longitude, point.latitude)
-			site_model = rshalib.site.SoilSiteModel(name, [site])
-		return site_model
+	pe_site_models = []
+	for p, pe_polygon in enumerate(pe_polygons):
+		name = "Positive evidence #%d (I>%.1f)" % (p+1, pe_thresholds[p])
+		site_model = polygon_to_site_model(pe_polygon, name, polygon_discretization)
+		pe_site_models.append(site_model)
+
+	ne_site_models = []
+	for n, ne_polygon in enumerate(ne_polygons):
+		name = "Negative evidence #%d (I<%.1f)" % (n+1, ne_thresholds[n])
+		site_model = polygon_to_site_model(ne_polygon, name, polygon_discretization)
+		ne_site_models.append(site_model)
+
+	pe_thresholds, ne_thresholds = np.array(pe_thresholds), np.array(ne_thresholds)
+	return pe_thresholds, pe_site_models, ne_thresholds, ne_site_models
+
+
+def read_evidence_site_info_from_gis(gis_filespec, event, polygon_discretization=5):
+	pe_thresholds, ne_thresholds = [], []
+	pe_polygons, ne_polygons = [], []
+
+	for rec in read_GIS_file(gis_filespec):
+		polygon_obj = rec["obj"].GetGeometryRef(0)
+		if rec["Event"] == event:
+			min_intensity = float(rec["Min_Condit"])
+			max_intensity = float(rec["Max_Condit"])
+
+			points = [oqhazlib.geo.Point(lon, lat) for (lon, lat) in polygon_obj.GetPoints()]
+			if len(points) > 1:
+				polygon = oqhazlib.geo.Polygon(points)
+			else:
+				[polygon] = points
+
+			if min_intensity:
+				pe_thresholds.append(min_intensity)
+				pe_polygons.append(polygon)
+			if max_intensity:
+				ne_thresholds.append(max_intensity)
+				ne_polygons.append(polygon)
+
+			"""
+			for constraint in constraints.split(';'):
+				constraint = constraint.strip()
+				if not constraint or constraint == '/':
+					continue
+				else:
+					intensity = float(constraint[2:])
+					if constraint[0] == '<':
+						ne_thresholds.append(intensity)
+						ne_polygons.append(polygon)
+					else:
+						pe_thresholds.append(intensity)
+						pe_polygons.append(polygon)
+			"""
 
 	pe_site_models = []
 	for p, pe_polygon in enumerate(pe_polygons):
@@ -389,8 +445,8 @@ if __name__ == "__main__":
 
 
 	## Read fault source model
-	#gis_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
-	gis_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
+	#gis_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen\GIS"
+	gis_folder = r"E:\Home\_kris\Publications\2017 - Aysen\GIS"
 
 	#gis_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel.shp")
 	gis_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel2.TAB")
@@ -403,7 +459,7 @@ if __name__ == "__main__":
 	#	rup_cols, rup_rows = flt._get_rupture_dimensions(flt.get_length(), flt.get_width(), mag)
 	#	print mag, rup_cols, rup_rows
 
-	source_model = read_fault_source_model_as_points(gis_filespec, min_mag, max_mag, dM, depth=0.1)
+	source_model = read_fault_source_model_as_floating_ruptures(gis_filespec, min_mag, max_mag, dM, depth=0.1)
 
 	## Construct ground-motion model
 	#ipe_name = "AtkinsonWald2007"
@@ -420,11 +476,20 @@ if __name__ == "__main__":
 
 	## Read lake evidence
 	event, version = "2007", "2b"
-	filespec = "%s_polygons_v%s.txt" % (event, version)
 	polygon_discretization = 2.5
-	(pe_thresholds, pe_site_models,
-	ne_thresholds, ne_site_models) = read_evidence_site_info(filespec, polygon_discretization)
 
+	#filespec = "%s_polygons_v%s.txt" % (event, version)
+	#(pe_thresholds, pe_site_models,
+	#ne_thresholds, ne_site_models) = read_evidence_site_info(filespec, polygon_discretization)
+
+	event = "SL-B"
+	filespec = os.path.join(gis_folder, "Polygons.shp")
+	(pe_thresholds, pe_site_models,
+	ne_thresholds, ne_site_models) = read_evidence_site_info_from_gis(filespec, event, polygon_discretization)
+	print pe_thresholds
+	print ne_thresholds
+
+	exit()
 
 	imt = oqhazlib.imt.MMI()
 
