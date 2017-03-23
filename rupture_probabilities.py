@@ -221,12 +221,16 @@ def read_evidence_site_info_from_gis(gis_filespec, event, polygon_discretization
 	pe_polygons, ne_polygons = [], []
 
 	for rec in read_GIS_file(gis_filespec):
-		polygon_obj = rec["obj"].GetGeometryRef(0)
+		geom_type = rec["obj"].GetGeometryName()
+		if geom_type == "POLYGON":
+			obj = rec["obj"].GetGeometryRef(0)
+		elif geom_type == "POINT":
+			obj = rec["obj"]
 		if rec["Event"] == event:
 			min_intensity = float(rec["Min_Condit"])
 			max_intensity = float(rec["Max_Condit"])
 
-			points = [oqhazlib.geo.Point(lon, lat) for (lon, lat) in polygon_obj.GetPoints()]
+			points = [oqhazlib.geo.Point(lon, lat) for (lon, lat) in obj.GetPoints()]
 			if len(points) > 1:
 				polygon = oqhazlib.geo.Polygon(points)
 			else:
@@ -271,7 +275,8 @@ def read_evidence_site_info_from_gis(gis_filespec, event, polygon_discretization
 
 
 def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
-								region, max_prob_color=0.5, plot_point_ruptures=True, fig_filespec=None):
+								region, max_prob_color=0.5, plot_point_ruptures=True,
+								title=None, text_box=None, fig_filespec=None):
 
 	## Extract source locations
 	x, y = [], []
@@ -415,10 +420,17 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 		layer = lbm.MapLayer(ne_data, ne_style)
 		layers.append(layer)
 
-	scalebar_style = lbm.ScalebarStyle((-72.5, -45.9), 25, yoffset=2000)
+	scalebar_style = lbm.ScalebarStyle((-72.25, -44.6), 25, yoffset=2000)
 	map = lbm.LayeredBasemap(layers, title, "merc", region=region,
 							graticule_interval=(1, 0.5), resolution='h',
 							scalebar_style=scalebar_style)
+
+	## Add text box
+	if text_box:
+		pylab.text(0.965, 0.035, text_box, fontsize=10, ha='right', va='bottom',
+				bbox={'facecolor':'white', 'alpha':1, 'pad':5},
+				multialignment="left", transform=map.ax.transAxes, zorder=1000)
+
 	if fig_filespec:
 		dpi = 200
 	else:
@@ -428,6 +440,10 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 
 
 if __name__ == "__main__":
+	project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
+	#project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
+	gis_folder = os.path.join(project_folder, "GIS")
+
 	## Construct uniform grid source model
 	grid_outline = (-74, -72, -46, -44.5)
 	#grid_outline = (-73, -73, -45.4, -45.4)
@@ -445,13 +461,10 @@ if __name__ == "__main__":
 
 
 	## Read fault source model
-	#gis_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen\GIS"
-	gis_folder = r"E:\Home\_kris\Publications\2017 - Aysen\GIS"
-
-	#gis_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel.shp")
-	gis_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel2.TAB")
-	#gis_filespec = os.path.join(gis_folder, "EnergiAustral_faults.TAB")
-	#source_model = read_fault_source_model(gis_filespec)
+	#fault_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel.shp")
+	fault_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel2.TAB")
+	#fault_filespec = os.path.join(gis_folder, "EnergiAustral_faults.TAB")
+	#source_model = read_fault_source_model(fault_filespec)
 	#for flt in source_model:
 	#	print flt.source_id, flt.name, flt.mfd.char_mag, flt.mfd.max_mag
 
@@ -459,7 +472,7 @@ if __name__ == "__main__":
 	#	rup_cols, rup_rows = flt._get_rupture_dimensions(flt.get_length(), flt.get_width(), mag)
 	#	print mag, rup_cols, rup_rows
 
-	source_model = read_fault_source_model_as_floating_ruptures(gis_filespec, min_mag, max_mag, dM, depth=0.1)
+	source_model = read_fault_source_model_as_floating_ruptures(fault_filespec, min_mag, max_mag, dM, depth=0.1)
 
 	## Construct ground-motion model
 	#ipe_name = "AtkinsonWald2007"
@@ -484,6 +497,9 @@ if __name__ == "__main__":
 
 	event = "SL-B"
 	filespec = os.path.join(gis_folder, "Polygons.shp")
+	recs = read_GIS_file(filespec)
+	events = sorted(set([rec["Event"] for rec in recs]))
+	print events
 	(pe_thresholds, pe_site_models,
 	ne_thresholds, ne_site_models) = read_evidence_site_info_from_gis(filespec, event, polygon_discretization)
 	print pe_thresholds
@@ -522,4 +538,5 @@ if __name__ == "__main__":
 	#max_prob_color = 0.5
 	max_prob_color = 1.0
 	plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
-								grid_outline, max_prob_color, plot_point_ruptures=True, fig_filespec=fig_filespec)
+								grid_outline, max_prob_color, plot_point_ruptures=True,
+								title=title, fig_filespec=fig_filespec)
