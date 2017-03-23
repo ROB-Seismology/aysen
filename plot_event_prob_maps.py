@@ -4,6 +4,9 @@ import hazard.rshalib as rshalib
 from rupture_probabilities import *
 
 
+# TODO: check if negative evidence can be more strict (higher or lower probabilities?): event SL-C
+# TODO: forward modelling to check sensitivity
+
 
 project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
 #project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
