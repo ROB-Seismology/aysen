@@ -452,7 +452,7 @@ if __name__ == "__main__":
 	depth = 5
 
 	dM = 0.25
-	min_mag, max_mag = 6.0 - dM/2, 6.75
+	min_mag, max_mag = 6.0 - dM/2, 7.0
 	print np.arange(min_mag, max_mag, dM) + dM/2
 	#min_mag, max_mag = 6.25 - dM/2, 6.25 + dM/2
 
@@ -488,14 +488,14 @@ if __name__ == "__main__":
 
 
 	## Read lake evidence
-	event, version = "2007", "2b"
 	polygon_discretization = 2.5
 
+	#event, version = "2007", "2b"
 	#filespec = "%s_polygons_v%s.txt" % (event, version)
 	#(pe_thresholds, pe_site_models,
 	#ne_thresholds, ne_site_models) = read_evidence_site_info(filespec, polygon_discretization)
 
-	event = "SL-B"
+	event = "SL-D"
 	filespec = os.path.join(gis_folder, "Polygons.shp")
 	recs = read_GIS_file(filespec)
 	events = sorted(set([rec["Event"] for rec in recs]))
@@ -504,8 +504,6 @@ if __name__ == "__main__":
 	ne_thresholds, ne_site_models) = read_evidence_site_info_from_gis(filespec, event, polygon_discretization)
 	print pe_thresholds
 	print ne_thresholds
-
-	exit()
 
 	imt = oqhazlib.imt.MMI()
 
@@ -530,10 +528,9 @@ if __name__ == "__main__":
 	fig_filename += "_%s" % source_model.name
 	fig_filename += ".PNG"
 
-	#fig_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
-	fig_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
-	#fig_filespec = os.path.join(fig_folder, fig_filename)
-	fig_filespec = None
+	fig_folder = os.path.join(project_folder, "Figures", event)
+	fig_filespec = os.path.join(fig_folder, fig_filename)
+	#fig_filespec = None
 
 	#max_prob_color = 0.5
 	max_prob_color = 1.0

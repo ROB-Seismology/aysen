@@ -14,7 +14,8 @@ gis_folder = os.path.join(project_folder, "GIS")
 
 
 ## Event names
-events = ['2007', 'SL-A', 'SL-B', 'SL-C', 'SL-CD', 'SL-D', 'SL-DE', 'SL-EF', 'SL-F', 'SL-G']
+#events = ['2007', 'SL-A', 'SL-B', 'SL-C', 'SL-CD', 'SL-D', 'SL-DE', 'SL-EF', 'SL-F', 'SL-G']
+events = ["SL-C"]
 
 
 ## Magnitude range to test
@@ -43,6 +44,7 @@ strict_intersection = True
 max_prob_color = 1.0
 map_region = (-74, -72, -46, -44.5)
 
+output_format = "PDF"
 
 for M in Mrange:
 	## Read fault source model
@@ -76,6 +78,7 @@ for M in Mrange:
 		ne_thresholds = np.array(ne_thresholds) + intensity_correction
 
 		print pe_thresholds
+		#ne_thresholds = np.minimum(7.5, ne_thresholds)
 		print ne_thresholds
 
 
@@ -87,6 +90,7 @@ for M in Mrange:
 		#print prob_dict
 		probs = np.array(prob_dict.values())
 		max_prob = probs.max()
+		print M, max_prob
 
 
 		## Plot
@@ -94,10 +98,10 @@ for M in Mrange:
 
 		#itle = "Event: %s, IPE: %s, M=%.2f" % (event, ipe_name, M)
 		title = ""
-		fig_filename = "%s_%s_M=%.2f.PNG" % (event, ipe_name, M)
+		fig_filename = "%s_%s_M=%.2f.%s" % (event, ipe_name, M, output_format)
 
-		fig_filespec = os.path.join(fig_folder, fig_filename)
-		#fig_filespec = None
+		#fig_filespec = os.path.join(fig_folder, fig_filename)
+		fig_filespec = None
 
 		plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
 									map_region, max_prob_color, plot_point_ruptures=True,
