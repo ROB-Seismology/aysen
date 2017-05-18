@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib
 import pylab
 from mapping.geo.readGIS import read_GIS_file
-import mapping.Basemap as lbm
+import mapping.layeredbasemap as lbm
 import openquake.hazardlib as oqhazlib
 import hazard.rshalib as rshalib
 from hazard.rshalib.calc.calc import calc_rupture_probability_from_ground_motion_thresholds
@@ -55,14 +55,11 @@ def read_fault_source_model(gis_filespec, characteristic=True):
 		'lower_seismogenic_depth': LSD,
 		'magnitude_scaling_relationship': MSR,
 		'rupture_mesh_spacing': RMS,
-		'min_dip': 'Dip',
-		'max_dip': 'Dip',
+		'dip': 'Dip',
 		'min_mag': None,
 		'max_mag': None,
-		'min_rake': 'Rake',
-		'max_rake': 'Rake',
-		'min_slip_rate': 1,
-		'max_slip_rate': 1,
+		'rake': 'Rake',
+		'slip_rate': 1,
 		'bg_zone': 'Id'
 	}
 
@@ -74,6 +71,7 @@ def read_fault_source_model(gis_filespec, characteristic=True):
 		for i, flt in enumerate(somo.sources):
 			somo.sources[i] = flt.to_characteristic_source(convert_mfd=True)
 			somo.sources[i].mfd.set_num_sigma(0)
+			somo.sources[i].mfd.modify_set_occurrence_rates([1])
 
 	return somo
 
@@ -89,6 +87,10 @@ def read_fault_source_model_as_floating_ruptures(gis_filespec, min_mag, max_mag,
 	## Divide fault trace in points
 	sources = []
 	for f, flt in enumerate(fault_somo.sources):
+		for mag in mfd.get_center_magnitudes():
+			subfaults = flt.get_top_edge_rupture_faults(mag)
+			sources.extend(subfaults)
+		"""
 		fault_surface = SimpleFaultSurface.from_fault_data(flt.fault_trace, USD, LSD, flt.dip, RMS)
 		fault_mesh = fault_surface.get_mesh()
 		surface_locations = fault_mesh[0:1]
@@ -104,6 +106,7 @@ def read_fault_source_model_as_floating_ruptures(gis_filespec, min_mag, max_mag,
 			hypo_depths.append(hypocenter.depth)
 		hypo_idx = np.abs(np.array(hypo_depths) - depth).argmin()
 		hypo_idx += 1
+		print hypo_idx
 		for i in range(1, mesh_cols-1):
 			mesh = fault_mesh[hypo_idx-1:hypo_idx+1, i-1:i+1]
 			dip, strike = mesh.get_mean_inclination_and_azimuth()
@@ -142,7 +145,7 @@ def read_fault_source_model_as_floating_ruptures(gis_filespec, min_mag, max_mag,
 
 					sources.append(subfault)
 				#print mag, rup_length/2, distance_to_start, distance_to_end
-
+		"""
 	somo_name = fault_somo.name + "_pts"
 	return rshalib.source.SourceModel(somo_name, sources)
 
@@ -272,6 +275,33 @@ def read_evidence_site_info_from_gis(gis_filespec, event, polygon_discretization
 
 	pe_thresholds, ne_thresholds = np.array(pe_thresholds), np.array(ne_thresholds)
 	return pe_thresholds, pe_site_models, ne_thresholds, ne_site_models
+
+
+def read_evidence_sites_from_gis(gis_filespec, polygon_discretization=5):
+	polygons = {}
+
+	for rec in read_GIS_file(gis_filespec):
+		geom_type = rec["obj"].GetGeometryName()
+		if geom_type == "POLYGON":
+			obj = rec["obj"].GetGeometryRef(0)
+		elif geom_type == "POINT":
+			obj = rec["obj"]
+
+		site_name = rec["Name"]
+		if not site_name in polygons:
+			points = [oqhazlib.geo.Point(lon, lat) for (lon, lat) in obj.GetPoints()]
+			if len(points) > 1:
+				polygon = oqhazlib.geo.Polygon(points)
+			else:
+				[polygon] = points
+			polygons[site_name] = polygon
+
+	site_models = []
+	for site_name, polygon in polygons.items():
+		site_model = polygon_to_site_model(polygon, site_name, polygon_discretization)
+		site_models.append(site_model)
+
+	return site_models
 
 
 def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
