@@ -41,10 +41,11 @@ soil_params = rshalib.site.REF_SOIL_PARAMS
 polygon_discretization = 2.5
 imt = oqhazlib.imt.MMI()
 strict_intersection = True
-max_prob_color = 1.0
-map_region = (-74, -72, -46, -44.5)
+max_prob_color = None
+#map_region = (-74, -72, -46, -44.5)
+map_region = (-74, -72, -46.25, -44.75)
 
-output_format = "PDF"
+output_format = "png"
 
 for M in Mrange:
 	## Read fault source model
@@ -92,6 +93,8 @@ for M in Mrange:
 		max_prob = probs.max()
 		print M, max_prob
 
+		## Average probability
+		avg_prob = 0.5 ** (len(pe_site_models) + len(ne_site_models))
 
 		## Plot
 		text_box = "Event: %s\nM: %.2f\nPmax: %.2f" % (event, M, max_prob)
@@ -104,5 +107,5 @@ for M in Mrange:
 		fig_filespec = None
 
 		plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
-									map_region, max_prob_color, plot_point_ruptures=True,
+									map_region, avg_prob, max_prob_color, plot_point_ruptures=True,
 									title=title, text_box=text_box, fig_filespec=fig_filespec)
