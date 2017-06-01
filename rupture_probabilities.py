@@ -3,7 +3,7 @@ import os
 import numpy as np
 import matplotlib
 import pylab
-from mapping.geo.readGIS import read_GIS_file
+from mapping.geotools.readGIS import read_GIS_file
 import mapping.layeredbasemap as lbm
 import openquake.hazardlib as oqhazlib
 import hazard.rshalib as rshalib
@@ -76,7 +76,7 @@ def read_fault_source_model(gis_filespec, characteristic=True):
 	return somo
 
 
-def read_fault_source_model_as_floating_ruptures(gis_filespec, min_mag, max_mag, dM, depth):
+def read_fault_source_model_as_floating_ruptures(gis_filespec, min_mag, max_mag, dM, depth, aspect_ratio=None):
 	from copy import deepcopy
 	from openquake.hazardlib.geo.surface.simple_fault import SimpleFaultSurface
 
@@ -87,6 +87,8 @@ def read_fault_source_model_as_floating_ruptures(gis_filespec, min_mag, max_mag,
 	## Divide fault trace in points
 	sources = []
 	for f, flt in enumerate(fault_somo.sources):
+		if aspect_ratio:
+			flt.rupture_aspect_ratio = aspect_ratio
 		for mag in mfd.get_center_magnitudes():
 			subfaults = flt.get_top_edge_rupture_faults(mag)
 			sources.extend(subfaults)
@@ -305,7 +307,7 @@ def read_evidence_sites_from_gis(gis_filespec, polygon_discretization=5):
 
 
 def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
-								region, max_prob_color=0.5, plot_point_ruptures=True,
+								region, ref_prob, max_prob_color=0.5, plot_point_ruptures=True,
 								title=None, text_box=None, fig_filespec=None):
 
 	## Extract source locations
@@ -321,7 +323,7 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 			prob_max = probs[idx]
 			## Select non-zero probability rupture locations to be plotted
 			if prob_max > PROB_MIN:
-				values['prob'].append(prob_max)
+				values['prob'].append(prob_max / ref_prob)
 				mag = source.mfd.get_center_magnitudes()[idx]
 				values['mag'].append(mag)
 
@@ -352,7 +354,9 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 			lons = np.array([pt.longitude for pt in fault.fault_trace.points])
 			lats = np.array([pt.latitude for pt in fault.fault_trace.points])
 			values['mag'].append(fault.mfd.get_center_magnitudes()[0])
-			values['prob'].append(prob)
+			#values['prob'].append(prob)
+			#values['prob'].append((prob - ref_prob) / ref_prob)
+			values['prob'].append(prob / ref_prob)
 			x.append(lons)
 			y.append(lats)
 
@@ -407,11 +411,16 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 	#colors = matplotlib.cm.jet(np.arange(num_mags))
 	#colors = ["purple", "blue", "green", "yellow", "orange", "red"]
 	#colors = "random_color"
-	colorbar_style = lbm.ColorbarStyle("Probability")
+	colorbar_style = lbm.ColorbarStyle("Probability ratio")
 	#thematic_color = lbm.ThematicStyleGradient([1E-3, 1E-2, 1E-1, 1], "RdBu_r", value_key='prob', colorbar_style=colorbar_style)
 	#thematic_color = lbm.ThematicStyleGradient([0.01, 0.05, 0.125, 0.25, 0.5, 1], "RdBu_r", value_key='prob', colorbar_style=colorbar_style)
-	thematic_color = lbm.ThematicStyleColormap("Reds", vmin=0.001, vmax=max_prob_color, value_key='prob', colorbar_style=colorbar_style, alpha=1)
-	#thematic_color.color_map.set_under('w')
+	#thematic_color = lbm.ThematicStyleColormap("Reds", vmin=0.001, vmax=max_prob_color, value_key='prob', colorbar_style=colorbar_style, alpha=1)
+	if not max_prob_color:
+		max_prob_color = 1./ref_prob
+	norm = matplotlib.colors.LogNorm(vmin=1./max_prob_color, vmax=max_prob_color)
+	thematic_color = lbm.ThematicStyleColormap("RdBu_r", norm=norm, value_key='prob', colorbar_style=colorbar_style, alpha=1)
+	## zero probabilities
+	thematic_color.color_map.set_bad(thematic_color.color_map(0))
 
 	if source_model.get_point_sources() and not plot_point_ruptures:
 		edge_magnitudes = np.concatenate([source.mfd.get_magnitude_bin_edges(), [center_magnitudes[-1]+dM/2]])
@@ -450,7 +459,7 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 		layer = lbm.MapLayer(ne_data, ne_style)
 		layers.append(layer)
 
-	scalebar_style = lbm.ScalebarStyle((-72.25, -44.6), 25, yoffset=2000)
+	scalebar_style = lbm.ScalebarStyle((-72.25, -44.85), 25, yoffset=2000)
 	map = lbm.LayeredBasemap(layers, title, "merc", region=region,
 							graticule_interval=(1, 0.5), resolution='h',
 							scalebar_style=scalebar_style)
