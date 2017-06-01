@@ -11,10 +11,13 @@ gis_folder = os.path.join(project_folder, "GIS")
 
 
 ## Scenarios
-scenario = "Due East"
+scenario = "Azul Tigre South"
+#scenario = "Due East"
 
 
 ## Thresholds (depends on type of evidence)
+## NE: 7.5, 8.5
+## PE: 5.5, 6.0, 6.5 7.5
 threshold = 8
 delta_threshold = 0.5
 #delta_threshold = 0.
@@ -25,15 +28,15 @@ ne_threshold = threshold + delta_threshold
 ## Construct ground-motion model
 ipe_name = "BakunWentworth1997WithSigma"
 #ipe_name = "AtkinsonWald2007"
-#ipe_name = "AllenEtAl2012Rrup"
+#ipe_name = "AllenEtAl2012"
 trt_gsim_dict = {TRT: ipe_name}
 ground_motion_model = rshalib.gsim.GroundMotionModel(ipe_name, trt_gsim_dict)
 gmpe_system_def = {TRT: rshalib.pmf.GMPEPMF([ipe_name], [1])}
 integration_distance = 300
 truncation_level = 2.5
 #truncation_level = 0.
-if "AllenEtAl2012" in ipe_name:
-	truncation_level /= 2
+#if "AllenEtAl2012" in ipe_name:
+#	truncation_level /= 2
 
 
 ## Parameters
@@ -56,11 +59,13 @@ print len(all_site_models)
 scenario_filespec = os.path.join(gis_folder, 'LOFZ_rupture_scenarios.TAB')
 flt_src_model = read_fault_source_model(scenario_filespec)
 [flt] = [flt for flt in flt_src_model if flt.name == scenario]
+aspect_ratio = flt.get_length() / flt.width
 
 ## Set characteristic magnitude from MSR and fault area
 import openquake.hazardlib as oqhazlib
 msr = getattr(oqhazlib.scalerel, MSR)()
 char_mag = msr.get_median_mag(flt.get_rupture().surface.get_area(), flt.rake)
+print flt.get_length(), flt.width, char_mag
 flt.mfd.min_mag = np.round(char_mag, 1)
 flt.mfd.char_mag = flt.mfd.min_mag + flt.mfd.bin_width/2.
 
@@ -86,19 +91,36 @@ for site_model in all_site_models:
 
 print len(pe_site_models), len(ne_site_models)
 
+## Average probability
+avg_prob = 0.5 ** (len(pe_site_models) + len(ne_site_models))
+print avg_prob
+
+
+## Compute probability for this scenario
+scenario_src_model = rshalib.source.SourceModel(scenario, [flt])
+prob_dict = calc_rupture_probability_from_ground_motion_thresholds(
+					scenario_src_model, ground_motion_model, imt, pe_site_models,
+					pe_thresholds, ne_site_models, ne_thresholds, truncation_level,
+					strict_intersection=strict_intersection)
+[scenario_prob] = prob_dict.values()[0]
+print scenario_prob
+
 
 ## Magnitude range to test
 dM = 0.5
 min_mag, max_mag = 6.0 - dM/2, 7.0
 #Mrange = np.arange(min_mag, max_mag, dM) + dM/2
-Mrange = np.linspace(flt.mfd.min_mag - dM, flt.mfd.min_mag + dM, 3)
+#Mrange = np.linspace(flt.mfd.min_mag - dM, flt.mfd.min_mag + dM, 3)
+Mrange = [flt.mfd.min_mag]
 print Mrange
 
 
 ## Map parameters
-max_prob_color = 1.0
-map_region = (-74, -72, -46, -44.5)
-output_format = "PDF"
+#max_prob_color = 1.0
+max_prob_color = None
+#map_region = (-74, -72, -46, -44.5)
+map_region = (-74, -72, -46.25, -44.75)
+output_format = "png"
 
 
 ## Test
@@ -106,23 +128,31 @@ M_prob_dict = {}
 for M in Mrange:
 	## Read fault source model
 	fault_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel2.TAB")
-	source_model = read_fault_source_model_as_floating_ruptures(fault_filespec, M - dM/2, M, dM, depth=0.1)
+	source_model = read_fault_source_model_as_floating_ruptures(fault_filespec,
+						M - dM/2, M, dM, depth=0.1, aspect_ratio=aspect_ratio)
+
+	#for flt in source_model:
+	#	if flt.source_id[0] == '4':
+	#		print flt.get_length(), flt.get_width()
 
 	## Compute rupture probabilities
 	prob_dict = calc_rupture_probability_from_ground_motion_thresholds(
 						source_model, ground_motion_model, imt, pe_site_models,
 						pe_thresholds, ne_site_models, ne_thresholds, truncation_level,
 						strict_intersection=strict_intersection)
-	M_prob_dict[M] = prob_dict
 
-
-#for M in sorted(M_prob_dict.keys()):
-	prob_dict = M_prob_dict[M]
+	#for rup_name in prob_dict:
+	#	if rup_name[0] == '3':
+	#		prob_dict[rup_name] *= 0
 	probs = np.array(prob_dict.values())
 	max_prob_idx = probs.argmax()
 	max_prob = probs[max_prob_idx]
 	rup_name = prob_dict.keys()[max_prob_idx]
 	print M, rup_name, max_prob
+
+	for rup_name, prob in prob_dict.items():
+		if prob >= scenario_prob:
+			print M, rup_name, prob
 
 
 	## Plot
@@ -134,5 +164,5 @@ for M in Mrange:
 	fig_filespec = None
 
 	plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
-								map_region, max_prob_color, plot_point_ruptures=True,
+								map_region, avg_prob, max_prob_color, plot_point_ruptures=True,
 								title=title, text_box=text_box, fig_filespec=fig_filespec)
