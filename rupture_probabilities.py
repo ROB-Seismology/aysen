@@ -307,7 +307,7 @@ def read_evidence_sites_from_gis(gis_filespec, polygon_discretization=5):
 
 
 def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
-								region, plot_point_ruptures=True,
+								region, plot_point_ruptures=True, colormap="RdBu_r",
 								title=None, text_box=None, fig_filespec=None):
 
 	## Extract source locations
@@ -416,7 +416,7 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 	#	max_prob_color = 1./ref_prob
 	#norm = matplotlib.colors.LogNorm(vmin=1./max_prob_color, vmax=max_prob_color)
 	norm = matplotlib.colors.Normalize(vmin=0, vmax=1)
-	thematic_color = lbm.ThematicStyleColormap("RdBu_r", norm=norm, value_key='prob', colorbar_style=colorbar_style, alpha=1)
+	thematic_color = lbm.ThematicStyleColormap(colormap, norm=norm, value_key='prob', colorbar_style=colorbar_style, alpha=1)
 	## zero probabilities
 	thematic_color.color_map.set_bad(thematic_color.color_map(0))
 
