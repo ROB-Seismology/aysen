@@ -5,14 +5,14 @@ from rupture_probabilities import *
 
 
 
-project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
-#project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
+#project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
+project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
 gis_folder = os.path.join(project_folder, "GIS")
 
 
 ## Scenarios
 #scenario = "Quitralco"
-scenario = "Azul Tigre South"
+#scenario = "Azul Tigre South"
 #scenario = "Due East"
 
 
@@ -20,8 +20,12 @@ scenario = "Azul Tigre South"
 ## NE: 7.5, 8.5
 ## PE: 5.5, 6.0, 6.5 7.5
 threshold = 8
-delta_threshold = 0.5
-#delta_threshold = 0.
+## Note: increasing delta_threshold increases computed probabilities,
+## but decreases discriminating power!
+## Note2: it is not possible to test this, as a particular site may
+## be both positive and negative if delta_threshold > 0 !!
+#delta_threshold = 0.5
+delta_threshold = 0.
 pe_threshold = threshold - delta_threshold
 ne_threshold = threshold + delta_threshold
 
@@ -116,8 +120,8 @@ print scenario_prob
 dM = 0.5
 min_mag, max_mag = 6.0 - dM/2, 7.0
 #Mrange = np.arange(min_mag, max_mag, dM) + dM/2
-Mrange = np.linspace(flt.mfd.min_mag - dM, flt.mfd.min_mag + dM, 3)
-#Mrange = [flt.mfd.min_mag]
+#Mrange = np.linspace(flt.mfd.min_mag - dM, flt.mfd.min_mag + dM, 3)
+Mrange = [flt.mfd.min_mag]
 print Mrange
 
 
@@ -168,6 +172,7 @@ for M in Mrange:
 	#fig_filespec = os.path.join(fig_folder, fig_filename)
 	fig_filespec = None
 
+	## Colormaps: RdBu_r, YlOrRd, BuPu, RdYlBu_r, Greys
 	plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
-								map_region, plot_point_ruptures=True,
+								map_region, plot_point_ruptures=True, colormap="RdYlBu_r",
 								title=title, text_box=text_box, fig_filespec=fig_filespec)
