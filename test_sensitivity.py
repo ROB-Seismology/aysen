@@ -4,15 +4,15 @@ import hazard.rshalib as rshalib
 from rupture_probabilities import *
 
 
-
-#project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
-project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
+project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
+#project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
 gis_folder = os.path.join(project_folder, "GIS")
+fig_folder = os.path.join(project_folder, "Figures", "Sensitivity")
 
 
 ## Scenarios
 #scenario = "Quitralco"
-#scenario = "Azul Tigre South"
+scenario = "Azul Tigre South"
 #scenario = "Due East"
 
 
@@ -31,21 +31,23 @@ ne_threshold = threshold + delta_threshold
 
 
 ## Construct ground-motion model
-ipe_name = "BakunWentworth1997WithSigma"
+#ipe_name = "BakunWentworth1997WithSigma"
 #ipe_name = "AtkinsonWald2007"
 #ipe_name = "AllenEtAl2012"
-trt_gsim_dict = {TRT: ipe_name}
-ground_motion_model = rshalib.gsim.GroundMotionModel(ipe_name, trt_gsim_dict)
-#gmpe_system_def = {TRT: rshalib.pmf.GMPEPMF([ipe_name], [1])}
-gmpe_system_def = {TRT: rshalib.pmf.GMPEPMF(["BakunWentworth1997WithSigma", "AllenEtAl2012", "AtkinsonWald2007"], [0.6, 0.3, 0.1])}
-integration_distance_dict = {"AtkinsonWald2007": (None, 30)}
-#TODO: apply distance filtering for BakunWentworth1997WithSigma when M larger than
-#threshold causing too high values in near field (to be determined)
-#integration_distance_dict = {"AtkinsonWald2007": (None, 30), "BakunWentworth1997WithSigma": (20, None)}
+ipe_name = "logictree"
+
+if ipe_name != "logictree":
+	trt_gsim_dict = {TRT: ipe_name}
+	ground_motion_model = rshalib.gsim.GroundMotionModel(ipe_name, trt_gsim_dict)
+	gmpe_system_def = {TRT: rshalib.pmf.GMPEPMF([ipe_name], [1])}
+	integration_distance_dict = {}
+else:
+	gmpe_system_def = {TRT: rshalib.pmf.GMPEPMF(["BakunWentworth1997WithSigma", "AllenEtAl2012", "AtkinsonWald2007"], [0.6, 0.3, 0.1])}
+	integration_distance_dict = {"AtkinsonWald2007": (None, 30)}
+	#TODO: apply distance filtering for BakunWentworth1997WithSigma when M larger than
+	#threshold causing too high values in near field (to be determined)
+	#integration_distance_dict = {"AtkinsonWald2007": (None, 30), "BakunWentworth1997WithSigma": (20, None)}
 truncation_level = 2.5
-#truncation_level = 0.
-#if "AllenEtAl2012" in ipe_name:
-#	truncation_level /= 2
 
 
 ## Parameters
@@ -120,8 +122,8 @@ print scenario_prob
 dM = 0.5
 min_mag, max_mag = 6.0 - dM/2, 7.0
 #Mrange = np.arange(min_mag, max_mag, dM) + dM/2
-#Mrange = np.linspace(flt.mfd.min_mag - dM, flt.mfd.min_mag + dM, 3)
-Mrange = [flt.mfd.min_mag]
+Mrange = np.linspace(flt.mfd.min_mag - dM, flt.mfd.min_mag + dM, 3)
+#Mrange = [flt.mfd.min_mag]
 print Mrange
 
 
@@ -169,8 +171,8 @@ for M in Mrange:
 
 	title = ""
 	fig_filename = "%s_%s_M=%.2f.%s" % (scenario, ipe_name, M, output_format)
-	#fig_filespec = os.path.join(fig_folder, fig_filename)
-	fig_filespec = None
+	fig_filespec = os.path.join(fig_folder, fig_filename)
+	#fig_filespec = None
 
 	## Colormaps: RdBu_r, YlOrRd, BuPu, RdYlBu_r, Greys
 	plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
