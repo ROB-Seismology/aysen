@@ -14,7 +14,8 @@ from hazard.rshalib.source.read_from_gis import import_source_model_from_gis
 ## Common parameters for area and fault sources
 TRT = "ASC"
 USD = 0
-LSD = 15
+LSD = 10
+#LSD = 15
 RAR = 1
 MSR = "WC1994"
 RMS = 2.5
