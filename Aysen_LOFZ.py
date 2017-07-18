@@ -10,8 +10,8 @@ if __name__ == "__main__":
 	import numpy as np
 	import openquake.hazardlib as oqhazlib
 	import hazard.rshalib as rshalib
-	import mapping.Basemap as lbm
-	from mapping.Basemap.cm.norm import PiecewiseLinearNorm
+	import mapping.layeredbasemap as lbm
+	from mapping.layeredbasemap.cm.norm import PiecewiseLinearNorm
 	import eqcatalog
 
 
@@ -24,7 +24,7 @@ if __name__ == "__main__":
 	## CMT example
 	ID = "Swarm 2007"
 	MW = 6.2
-	lat, lon, depth = -45.374, -73.045, 12
+	lat, lon, depth = -45.374, -73.045, 4
 	date = datetime.date(2007, 04, 21)
 	time = datetime.time(17, 53, int(round(40.80)))
 	eq = eqcatalog.LocalEarthquake(ID, date, time, lon, lat, depth, mag={'MW': MW})
@@ -33,7 +33,7 @@ if __name__ == "__main__":
 	strike, dip, rake = 20, 90, 180
 	nopl = rshalib.geo.NodalPlane(strike, dip, rake)
 	npd = rshalib.pmf.NodalPlaneDistribution([nopl], [1])
-	usd, lsd = 0, 15
+	usd, lsd = 0, 12.5
 	trt = "LOFZ"
 
 	pt_source = rshalib.source.PointSource.from_eq_record(eq, upper_seismogenic_depth=usd,
@@ -56,8 +56,8 @@ if __name__ == "__main__":
 
 
 	## Define site model
-	grid_outline = [-74, -71, -46, -44]
-	grid_spacing = (0.5, 0.5)
+	grid_outline = [-74, -71, -46, -44.5]
+	grid_spacing = (0.1, 0.1)
 	soil_site_model = None
 
 	#imt_periods = {'PGA': [0], 'SA': [0.25, 1.]}
@@ -95,7 +95,7 @@ if __name__ == "__main__":
 		#contour_interval = 0.05
 		#norm = None
 		contour_interval = 0.5
-		breakpoints = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+		breakpoints = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 		norm = PiecewiseLinearNorm(breakpoints)
 		title = "%s, Mw=%s" % (date, MW)
 		hm = uhs_field.getHazardMap(period_spec=T)
@@ -132,6 +132,6 @@ if __name__ == "__main__":
 #               fig_filespec = os.path.join(out_folder, fig_filename)
 #		out_filespec = "%s_%s_%s_%s.tiff" % (lat, lon, depth, MW)
 #		map.export_geotiff(out_filespec=out_filespec)
-                map.plot(fig_filespec=fig_filespec, dpi=50)
+                map.plot(fig_filespec=fig_filespec, dpi=100)
 
 		#exit()
