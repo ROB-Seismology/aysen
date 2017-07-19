@@ -4,22 +4,24 @@ import hazard.rshalib as rshalib
 from rupture_probabilities import *
 
 
-project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
-#project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
+#project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
+project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
 gis_folder = os.path.join(project_folder, "GIS")
 fig_folder = os.path.join(project_folder, "Figures", "Sensitivity")
 
 
 ## Scenarios
 #scenario = "Quitralco"
-scenario = "Azul Tigre South"
-#scenario = "Due East"
+#scenario = "Azul Tigre South"
+#scenario = "2007"
+scenario = "Due East"
+#scenario = "Due West"
 
 
 ## Thresholds (depends on type of evidence)
 ## NE: 7.5, 8.5
 ## PE: 5.5, 6.0, 6.5 7.5
-threshold = 8
+threshold = 6.5
 ## Note: increasing delta_threshold increases computed probabilities,
 ## but decreases discriminating power!
 ## Note2: it is not possible to test this, as a particular site may
@@ -140,6 +142,9 @@ for M in Mrange:
 	fault_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel2.TAB")
 	source_model = read_fault_source_model_as_floating_ruptures(fault_filespec,
 						M - dM/2, M, dM, depth=0.1, aspect_ratio=aspect_ratio)
+	if len(source_model) == 0:
+		print("Warning: no sources for M=%s!" % M)
+		continue
 
 	#for flt in source_model:
 	#	if flt.source_id[0] == '4':
