@@ -5,8 +5,11 @@ Aysen Fjord
 
 
 ## Folder locations
-gis_folder = r"E:\Home\_kris\Publications\2017 - Aysen\GIS"
-out_folder = r"E:\Home\_kris\Publications\2017 - Aysen\Figures"
+#project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
+project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
+gis_folder = os.path.join(project_folder, "GIS")
+fig_folder = os.path.join(project_folder, "Figures")
+
 
 ## Event to plot
 event_ID = "20070421"
@@ -209,7 +212,7 @@ if __name__ == "__main__":
 			#	gmpe_name = "AverageGMPE"
 
 			fig_filename = "%s_%s.PNG" % (event_ID, gmpe_name)
-			fig_filespec = os.path.join(out_folder, fig_filename)
+			fig_filespec = os.path.join(fig_folder, fig_filename)
 			#fig_filespec = None
 			#map.export_geotiff(out_filespec=out_filespec)
 			map.plot(fig_filespec=fig_filespec, dpi=200)
