@@ -11,17 +11,19 @@ fig_folder = os.path.join(project_folder, "Figures", "Sensitivity")
 
 
 ## Scenarios
-#scenario = "Quitralco"
-#scenario = "Azul Tigre South"
-#scenario = "2007"
-scenario = "Due East"
-#scenario = "Due West"
+#scenario, threshold = "Quitralco", 8
+#scenario, threshold = "Azul Tigre South", 8
+#scenario, threshold = "2007", 8
+scenario, threshold = "Due East", 7
+#scenario, threshold = "Due West", 7
 
 
 ## Thresholds (depends on type of evidence)
+## Note: thresholds chosen such that they are not all positive or negative for chosen scenario
+
 ## NE: 7.5, 8.5
 ## PE: 5.5, 6.0, 6.5 7.5
-threshold = 6.5
+#threshold = 7
 ## Note: increasing delta_threshold increases computed probabilities,
 ## but decreases discriminating power!
 ## Note2: it is not possible to test this, as a particular site may
