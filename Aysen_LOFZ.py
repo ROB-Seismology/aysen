@@ -14,8 +14,6 @@ fig_folder = os.path.join(project_folder, "Figures")
 ## Event to plot
 event_ID = "20070421"
 
-roman_intensity_dict = {1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI',
-						7: 'VII', 8: 'VIII', 9: 'IX', 10: 'X', 11: 'XI', 12: 'XII'}
 
 
 if __name__ == "__main__":
@@ -27,6 +25,7 @@ if __name__ == "__main__":
 	import mapping.layeredbasemap as lbm
 	from mapping.layeredbasemap.cm.norm import PiecewiseLinearNorm, LinearNorm
 	import eqcatalog
+	from rupture_probabilities import roman_intensity_dict
 
 
 	## Common parameters
