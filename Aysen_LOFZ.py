@@ -3,6 +3,8 @@ Ground-motion field due to fault source
 Aysen Fjord
 """
 
+import os
+
 
 ## Folder locations
 #project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
@@ -17,7 +19,6 @@ event_ID = "20070421"
 
 
 if __name__ == "__main__":
-	import os
 	import datetime
 	import numpy as np
 	import openquake.hazardlib as oqhazlib
@@ -69,7 +70,7 @@ if __name__ == "__main__":
 
 
 	# Define GMPEs or IPEs
-	#gmpe_names = ["AtkinsonWald2007", "Barrientos2007", "BakunWentworth1997"]
+	#gmpe_names = ["AtkinsonWald2007", "Barrientos1980", "BakunWentworth1997"]
 	gmpe_names = ["BakunWentworth1997"]
 	for gmpe_name in gmpe_names:
 		gmpe_system_def = {}
@@ -99,7 +100,7 @@ if __name__ == "__main__":
 	observed_intensities = []
 	with open(csv_filespec) as f:
 		for l, line in enumerate(f):
-			if l >= 1:
+			if l >= 1 and line[0] != '#':
 				name, lat, lon, mmi1, mmi2 = line.split(',')
 				lat, lon = float(lat), float(lon)
 				mmi = {"20070421": mmi1, "20070402": mmi2}[event_ID]
@@ -118,7 +119,7 @@ if __name__ == "__main__":
 	header = ["IPE", "RMSE", "MAE", "MBE"]
 	tab = PrettyTable(header)
 	tab_rows = []
-	for gmpe_name in ["AllenEtAl2012", "AtkinsonWald2007", "BakunWentworth1997", "Barrientos2007"]:
+	for gmpe_name in ["AllenEtAl2012", "AtkinsonWald2007", "BakunWentworth1997", "Barrientos1980"]:
 		gmpe_system_def = {}
 		gmpe_pmf = rshalib.pmf.GMPEPMF([gmpe_name], [1])
 		gmpe_system_def[trt] = gmpe_pmf
@@ -156,6 +157,7 @@ if __name__ == "__main__":
 
 
 		## Plot map
+		"""
 		for T in period_list:
 			#norm = None
 			contour_interval = 0.5
@@ -176,6 +178,16 @@ if __name__ == "__main__":
 							coastline_style=coastline_style, countries_style=countries_style,
 							source_model=pt_src_model, resolution="h", show_legend=show_legend)
 			#, contour_format="%.1f", colorbar_interval=1, gridlabel_format="%.1f"
+
+			## Add topographic hillshading
+			layer = map.get_layer_by_name("intensity_grid")
+			#elevation_grid = lbm.GdalRasterData(r"D:\GIS-data\DEM\Etopo2.bin", region=map.region)
+			elevation_grid = lbm.WCSData("http://seishaz.oma.be:8080/geoserver/wcs", "ngdc:etopo1_bedrock", region=map.region)
+			blend_mode = "soft"
+			hillshade_style = lbm.HillshadeStyle(0, 45, 1, blend_mode=blend_mode,
+													elevation_grid=elevation_grid)
+			layer.style.hillshade_style = hillshade_style
+			layer.style.pixelated = True
 
 			## Add faults
 			#gis_filespec = r"C:\Users\Katleen\OneDrive\UGent\2de Master\Thesis\Global Mapper\coastline.kml"
@@ -216,6 +228,7 @@ if __name__ == "__main__":
 			#map.export_geotiff(out_filespec=out_filespec)
 			map.plot(fig_filespec=fig_filespec, dpi=200)
 			#exit()
+		"""
 
 	## Print misfit measures
 	print tab
