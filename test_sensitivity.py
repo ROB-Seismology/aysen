@@ -5,8 +5,8 @@ import hazard.rshalib as rshalib
 from rupture_probabilities import *
 
 
-#project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
-project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
+project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
+#project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
 gis_folder = os.path.join(project_folder, "GIS")
 fig_folder = os.path.join(project_folder, "Figures", "Sensitivity", "Test")
 
@@ -53,7 +53,10 @@ all_site_models = []
 for geom_type in ["Polygons", "Points"]:
 	shapefile = os.path.join(gis_folder, "%s.shp" % geom_type)
 	site_models = read_evidence_sites_from_gis(shapefile, polygon_discretization)
-	all_site_models.extend(site_models)
+	for site_model in site_models:
+		## Cuervo opp is part of Centre
+		if site_model.name != "Cuervo opp":
+			all_site_models.append(site_model)
 print len(all_site_models)
 
 for scenario in ["Quitralco", "Azul Tigre South", "2007", "Due East", "Due West"]:
@@ -80,7 +83,7 @@ for scenario in ["Quitralco", "Azul Tigre South", "2007", "Due East", "Due West"
 	delta_threshold = 0.
 
 	#for threshold_mmi in [6, 7, 8]:
-	for threshold_mmi in [6]:
+	for threshold_mmi in [7]:
 		pe_threshold = threshold_mmi - delta_threshold
 		ne_threshold = threshold_mmi + delta_threshold
 
@@ -209,9 +212,11 @@ for scenario in ["Quitralco", "Azul Tigre South", "2007", "Due East", "Due West"
 						#fig_filespec = None
 
 						## Colormaps: RdBu_r, YlOrRd, BuPu, RdYlBu_r, Greys
+						site_model_gis_file = os.path.join(gis_folder, "Polygons.shp")
 						plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
 													map_region, plot_point_ruptures=True, colormap="RdYlBu_r",
-													title=title, text_box=text_box, fig_filespec=fig_filespec)
+													title=title, text_box=text_box, site_model_gis_file=site_model_gis_file,
+													fig_filespec=fig_filespec)
 
 
 		## Plot max_prob vs magnitude
