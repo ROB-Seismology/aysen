@@ -4,8 +4,8 @@ import mapping.layeredbasemap as lbm
 from rupture_probabilities import *
 
 
-#project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
-project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
+project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
+#project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
 gis_folder = os.path.join(project_folder, "GIS")
 fig_folder = os.path.join(project_folder, "Figures")
 
@@ -40,7 +40,8 @@ layers.append(layer)
 ## Rupture scenarios
 gis_filespec = os.path.join(gis_folder, 'LOFZ_rupture_scenarios.TAB')
 data = lbm.GisData(gis_filespec, label_colname='Name')
-label_style = lbm.TextStyle(font_size=10, color='m', rotation='auto', vertical_alignment='baseline')
+data.style_params['label_anchor'] = [0., 0., 1., None, None]
+label_style = lbm.TextStyle(font_size=10, color='m', rotation='auto', vertical_alignment='center', horizontal_alignment='center', offset=(5,-5))
 style = lbm.LineStyle(line_color='m', line_width=2, label_style=label_style, label_anchor=0.5)
 layer = lbm.MapLayer(data, style, legend_label='Test scenarios')
 layers.append(layer)
@@ -55,11 +56,17 @@ for polygon_data in multipolygon_data:
 	if not polygon_data.label in site_names:
 		site_names.append(polygon_data.label)
 		polygons.append(polygon_data)
+		if polygon_data.label == 'Cuervo opp':
+			polygon_data.label = " "
 data = polygons[0].to_multi_polygon()
 for polygon in polygons[1:]:
 	data.append(polygon)
-label_style = lbm.TextStyle(font_size=10, color='b', horizontal_alignment='right')
-style = lbm.PolygonStyle(line_color=None, line_width=0, fill_color='b', label_style=label_style, alpha=0.5)
+print site_names
+data.style_params['label_anchor'] = ['east', None, None, 'south', 'south', None]
+data.style_params['horizontal_alignment'] = ['left', None, None, 'right', 'left', None]
+data.style_params['offset'] = [(3,0), None, None, (0,0), (0,0), None]
+label_style = lbm.TextStyle(font_size=10, color='b', horizontal_alignment='right', offset=(-3,0))
+style = lbm.PolygonStyle(line_color=None, line_width=0, fill_color='b', label_style=label_style, label_anchor="west", alpha=0.5)
 layer = lbm.MapLayer(data, style, legend_label='Polygon sites')
 layers.append(layer)
 
@@ -77,7 +84,7 @@ data = points[0].to_multi_point()
 for point in points[1:]:
 	data.append(point)
 label_style = lbm.TextStyle(font_size=10, color='b', horizontal_alignment='left', offset=(7,0))
-style = lbm.PointStyle(shape='D', size=8, line_color='b', line_width=1.5, label_style=label_style)
+style = lbm.PointStyle(shape='D', size=6, fill_color='b', line_color='k', label_style=label_style)
 layer = lbm.MapLayer(data, style, legend_label='Point sites')
 layers.append(layer)
 
