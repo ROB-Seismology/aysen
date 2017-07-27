@@ -313,7 +313,7 @@ def read_evidence_sites_from_gis(gis_filespec, polygon_discretization=5):
 
 def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
 								region, plot_point_ruptures=True, colormap="RdBu_r",
-								title=None, text_box=None, fig_filespec=None):
+								title=None, text_box=None, site_model_gis_file=None, fig_filespec=None):
 
 	## Extract source locations
 	x, y = [], []
@@ -448,19 +448,37 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 		layer = lbm.MapLayer(max_source_data, style)
 		layers.append(layer)
 
+	## Observation sites
+	## Read polygons from GIS file if specified
+	site_polygons = {}
+	if site_model_gis_file:
+		site_data = lbm.GisData(site_model_gis_file, label_colname='Name')
+		site_data = site_data.get_data()[-1]
+		for polygon in site_data:
+			site_polygons[polygon.label] = polygon
+
 	## Positive evidence
 	for pe_site_model in pe_site_models:
-		pe_style = lbm.PointStyle('+', size=8, line_width=1, line_color='m')
-		pe_data = lbm.MultiPointData(pe_site_model.lons, pe_site_model.lats)
+		if pe_site_model.name in site_polygons:
+			pe_data = site_polygons[pe_site_model.name]
+			pe_style = lbm.PolygonStyle(line_width=0, fill_color='m', alpha=0.5)
+		else:
+			pe_style = lbm.PointStyle('+', size=8, line_width=1, line_color='m')
+			pe_data = lbm.MultiPointData(pe_site_model.lons, pe_site_model.lats)
 		layer = lbm.MapLayer(pe_data, pe_style)
 		layers.append(layer)
 
 	## Negative evidence
 	for ne_site_model in ne_site_models:
-		ne_style = lbm.PointStyle('_', size=8, line_width=1, line_color='c')
-		ne_data = lbm.MultiPointData(ne_site_model.lons, ne_site_model.lats)
+		if ne_site_model.name in site_polygons:
+			ne_data = site_polygons[ne_site_model.name]
+			ne_style = lbm.PolygonStyle(line_width=0, fill_color='c', alpha=0.5)
+		else:
+			ne_style = lbm.PointStyle('_', size=8, line_width=1, line_color='c')
+			ne_data = lbm.MultiPointData(ne_site_model.lons, ne_site_model.lats)
 		layer = lbm.MapLayer(ne_data, ne_style)
 		layers.append(layer)
+
 
 	scalebar_style = lbm.ScalebarStyle((-72.25, -44.85), 25, yoffset=2000)
 	map = lbm.LayeredBasemap(layers, title, "merc", region=region,
