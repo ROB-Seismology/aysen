@@ -5,10 +5,10 @@ import hazard.rshalib as rshalib
 from rupture_probabilities import *
 
 
-project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
-#project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
+#project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
+project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
 gis_folder = os.path.join(project_folder, "GIS")
-fig_folder = os.path.join(project_folder, "Figures", "Sensitivity", "Test")
+fig_folder = os.path.join(project_folder, "Figures", "Sensitivity", "v3")
 
 
 ## Scenarios
@@ -82,11 +82,8 @@ for scenario in ["Quitralco", "Azul Tigre South", "2007", "Due East", "Due West"
 	#delta_threshold = 0.5
 	delta_threshold = 0.
 
-	#for threshold_mmi in [6, 7, 8]:
-	for threshold_mmi in [7]:
-		pe_threshold = threshold_mmi - delta_threshold
-		ne_threshold = threshold_mmi + delta_threshold
-
+	#for threshold_set in [6, 7, 8]:
+	for threshold_set in [(6, 7, 8)]:
 		## Construct ground-motion model
 		#ipe_name = "BakunWentworth1997WithSigma"
 		#ipe_name = "AtkinsonWald2007"
@@ -112,20 +109,24 @@ for scenario in ["Quitralco", "Azul Tigre South", "2007", "Due East", "Due West"
 
 			## Run DSHA model and determine pe_site_models and ne_site_models
 			pe_thresholds, pe_site_models, ne_thresholds, ne_site_models = [], [], [], []
-			for site_model in all_site_models:
-				dsha_model = rshalib.shamodel.DSHAModel(scenario, scenario_src_model, lt_gmpe_system_def,
-							grid_outline=[], grid_spacing=None,
-							soil_site_model=site_model, imt_periods={"MMI": [0]},
-							truncation_level=0, integration_distance=500)
+			for threshold_mmi in threshold_set:
+				pe_threshold = threshold_mmi - delta_threshold
+				ne_threshold = threshold_mmi + delta_threshold
 
-				uhs_field = dsha_model.calc_gmf_fixed_epsilon()
-				hm = uhs_field.getHazardMap()
-				if (hm.intensities > pe_threshold).all():
-					pe_site_models.append(site_model)
-					pe_thresholds.append(pe_threshold)
-				elif (hm.intensities <= ne_threshold).all():
-					ne_site_models.append(site_model)
-					ne_thresholds.append(ne_threshold)
+				for site_model in all_site_models:
+					dsha_model = rshalib.shamodel.DSHAModel(scenario, scenario_src_model, lt_gmpe_system_def,
+								grid_outline=[], grid_spacing=None,
+								soil_site_model=site_model, imt_periods={"MMI": [0]},
+								truncation_level=0, integration_distance=500)
+
+					uhs_field = dsha_model.calc_gmf_fixed_epsilon()
+					hm = uhs_field.getHazardMap()
+					if (hm.intensities > pe_threshold).all():
+						pe_site_models.append(site_model)
+						pe_thresholds.append(pe_threshold)
+					elif (hm.intensities <= ne_threshold).all():
+						ne_site_models.append(site_model)
+						ne_thresholds.append(ne_threshold)
 
 			print len(pe_site_models), len(ne_site_models)
 
@@ -203,11 +204,15 @@ for scenario in ["Quitralco", "Azul Tigre South", "2007", "Due East", "Due West"
 							ipe_label = ipe_name[:ipe_name.find("WithSigma")]
 						else:
 							ipe_label = ipe_name
-						text_box = "Scenario: %s (M=%.2f)\nThreshold MMI: %s\nIPE: %s\nPmax: %.2f"
-						text_box %= (scenario, M, roman_intensity_dict[threshold_mmi], ipe_label, max_prob)
+						text_box = "Scenario: %s\nThreshold MMI: %s\nIPE: %s\nM: %.2f, Pmax: %.2f"
+						text_box %= (scenario, ', '.join([roman_intensity_dict[threshold_mmi] for threshold_mmi in threshold_set]), ipe_label, M, max_prob)
 
 						title = ""
-						fig_filename = "%s_MMI=%d_%s_M=%.2f.%s" % (scenario, threshold_mmi, ipe_name, M, output_format)
+						if len(threshold_set) == 1:
+							intensity = threshold_set[0]
+						else:
+							intensity = "mix"
+						fig_filename = "%s_MMI=%s_%s_M=%.2f.%s" % (scenario, intensity, ipe_name, M, output_format)
 						fig_filespec = os.path.join(fig_folder, fig_filename)
 						#fig_filespec = None
 
@@ -229,17 +234,21 @@ for scenario in ["Quitralco", "Azul Tigre South", "2007", "Due East", "Due West"
 					label = ipe_name[:ipe_name.find("WithSigma")]
 				else:
 					label = ipe_name
-				pylab.plot(Mrange, section_probs[ipe_name], 'x-', color=color, label=label)
-				pylab.plot(Mrange, max_probs[ipe_name], 'x--', color=color, label='_nolegend_')
+				pylab.plot(Mrange, max_probs[ipe_name], 'x-', color=color, label=label)
+				pylab.plot(Mrange, section_probs[ipe_name], 'x--', color=color, label='_nolegend_')
 				pylab.hlines(scenario_probs[ipe_name], Mrange[0], Mrange[-1], colors=color, linestyles="dotted")
 			pylab.vlines(scenflt.mfd.min_mag, 0, 1, linestyles="dotted")
 			pylab.xlim(Mrange[0], Mrange[-1])
 			pylab.ylim(0, 1)
 			pylab.xlabel("Magnitude")
 			pylab.ylabel("Probability")
-			pylab.title("%s scenario, MMI threshold = %d" % (scenario, threshold_mmi))
+			if len(threshold_set) == 1:
+				intensity = threshold_set[0]
+			else:
+				intensity = "mix"
+			pylab.title("%s scenario, MMI threshold = %s" % (scenario, intensity))
 			pylab.legend(loc=0)
-			fig_filename = "%s_MMI=%s_M_vs_prob.%s" % (scenario, threshold_mmi, output_format)
+			fig_filename = "%s_MMI=%s_M_vs_prob.%s" % (scenario, intensity, output_format)
 			fig_filespec = os.path.join(fig_folder, fig_filename)
 			#fig_filespec = None
 			if fig_filespec:
