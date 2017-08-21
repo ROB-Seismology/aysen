@@ -8,7 +8,7 @@ from rupture_probabilities import *
 #project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
 project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
 gis_folder = os.path.join(project_folder, "GIS")
-fig_folder = os.path.join(project_folder, "Figures", "Sensitivity", "v3")
+fig_folder = os.path.join(project_folder, "Figures", "Sensitivity", "v4")
 
 
 ## Scenarios
@@ -59,7 +59,8 @@ for geom_type in ["Polygons", "Points"]:
 			all_site_models.append(site_model)
 print len(all_site_models)
 
-for scenario in ["Quitralco", "Azul Tigre South", "2007", "Due East", "Due West"]:
+#for scenario in ["Quitralco", "Azul Tigre South", "2007", "Due East", "Due West"]:
+for scenario in ["Quitralco"]:
 	## Read rupture scenario
 	scenario_filespec = os.path.join(gis_folder, 'LOFZ_rupture_scenarios.TAB')
 	flt_src_model = read_fault_source_model(scenario_filespec)
@@ -91,7 +92,7 @@ for scenario in ["Quitralco", "Azul Tigre South", "2007", "Due East", "Due West"
 		#ipe_name = "LogicTree"
 
 		ipe_names = ["LogicTree", "AllenEtAl2012", "AtkinsonWald2007", "BakunWentworth1997WithSigma", "Barrientos1980WithSigma"]
-		#ipe_names = ipe_names[-1:]
+		ipe_names = ipe_names[-2:-1]
 		max_probs, section_probs, scenario_probs = {}, {}, {}
 		for ipe_name in ipe_names:
 			if ipe_name != "LogicTree":
@@ -156,6 +157,7 @@ for scenario in ["Quitralco", "Azul Tigre South", "2007", "Due East", "Due West"
 
 				## Test
 				max_probs[ipe_name], section_probs[ipe_name] = [], []
+				"""
 				for M in Mrange:
 					## Read fault source model
 					fault_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel2.TAB")
@@ -167,6 +169,14 @@ for scenario in ["Quitralco", "Azul Tigre South", "2007", "Due East", "Due West"
 						max_probs[ipe_name].append(np.nan)
 						section_probs[ipe_name].append(np.nan)
 						continue
+				"""
+
+				dM = 0.2
+				Mrange = []
+				fault_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel3.TAB")
+				for M, source_model in read_fault_source_model_as_network(fault_filespec, dM=dM):
+					print("M=%.1f, n=%d" % (M, len(source_model)))
+					Mrange.append(M)
 
 					## Find fault section closest to scenario rupture
 					distances = []
