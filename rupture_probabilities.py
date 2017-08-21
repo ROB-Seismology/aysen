@@ -157,6 +157,41 @@ def read_fault_source_model_as_floating_ruptures(gis_filespec, min_mag, max_mag,
 	return rshalib.source.SourceModel(somo_name, sources)
 
 
+def read_fault_source_model_as_network(gis_filespec, section_len=2.85, dM=0.2, max_strike_delta=60):
+	import eqgeology.Scaling.WellsCoppersmith1994 as wc
+
+	## Read fault model
+	fault_somo = read_fault_source_model(gis_filespec, characteristic=False)
+
+	## Construct fault network
+	print("Constructing fault network...")
+	for flt in fault_somo:
+		flt.rupture_mesh_spacing = section_len
+	allow_triple_junctions = False
+	flt_network = fault_somo.get_fault_network(allow_triple_junctions=allow_triple_junctions, max_strike_delta=max_strike_delta)
+	flt_network.check_consistency()
+	print("Determining all possible connections...")
+	connections = flt_network.get_all_connections(100, allow_triple_junctions=allow_triple_junctions)
+	max_num_sections = max([len(conn) for conn in connections])
+
+	## Determine relation between section length/area and magnitude
+	section_nums = np.arange(1, max_num_sections + 1)
+	lengths = section_nums * section_len
+	areas = lengths * (LSD - USD)
+	mags = [wc.GetMagFromRuptureParams(RA=ra)['RA'].val for ra in areas]
+
+	## Extract all possible ruptures with number of sections corresponding to
+	## given magnitude
+	Mrange = np.arange(5.6, 7.4 + dM/2, dM)
+	for M in Mrange:
+		num_sections = int(round(rshalib.utils.interpolate(mags, section_nums, M)))
+		linked_ruptures = [conn for conn in connections if len(conn) == num_sections]
+		rupture_model = fault_somo.get_linked_subfaults(linked_ruptures, characteristic=True)
+		for flt in rupture_model:
+			flt.mfd = rshalib.mfd.CharacteristicMFD(M, 1, 0.1, num_sigma=0)
+		yield (M, rupture_model)
+
+
 def polygon_to_site_model(polygon, name, polygon_discretization):
 	if isinstance(polygon, oqhazlib.geo.Polygon):
 		try:
