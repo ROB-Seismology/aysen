@@ -20,9 +20,18 @@ RAR = 1
 MSR = "WC1994"
 RMS = 2.5
 
+## Override fault dip
+DIP = 89
 
 roman_intensity_dict = {1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI',
 						7: 'VII', 8: 'VIII', 9: 'IX', 10: 'X', 11: 'XI', 12: 'XII'}
+
+def get_roman_intensity(intensity):
+	intensity, dec = divmod(intensity, 1)
+	roman_intensity = roman_intensity_dict[intensity]
+	if dec == 0.5:
+		roman_intensity += '½'
+	return roman_intensity.decode('Latin-1')
 
 
 def create_uniform_grid_source_model(grid_outline, grid_spacing, min_mag,
@@ -51,6 +60,8 @@ def create_uniform_grid_source_model(grid_outline, grid_spacing, min_mag,
 
 
 def read_fault_source_model(gis_filespec, characteristic=True):
+	## Note: set fault dip to 89 degrees to avoid crash
+	## in rupture.surface.get_joyner_boore_distance function in oqhazlib
 	column_map = {
 		'id': '#',
 		'name': 'Name',
@@ -60,7 +71,8 @@ def read_fault_source_model(gis_filespec, characteristic=True):
 		'lower_seismogenic_depth': LSD,
 		'magnitude_scaling_relationship': MSR,
 		'rupture_mesh_spacing': RMS,
-		'dip': 'Dip',
+		#'dip': 'Dip',
+		'dip': DIP,
 		'min_mag': None,
 		'max_mag': None,
 		'rake': 'Rake',
@@ -173,20 +185,36 @@ def read_fault_source_model_as_network(gis_filespec, section_len=2.85, dM=0.2, m
 	print("Determining all possible connections...")
 	connections = flt_network.get_all_connections(100, allow_triple_junctions=allow_triple_junctions)
 	max_num_sections = max([len(conn) for conn in connections])
+	min_aspect_ratio = 0.67
 
 	## Determine relation between section length/area and magnitude
 	section_nums = np.arange(1, max_num_sections + 1)
 	lengths = section_nums * section_len
-	areas = lengths * (LSD - USD)
-	mags = [wc.GetMagFromRuptureParams(RA=ra)['RA'].val for ra in areas]
+	widths = np.minimum(lengths / min_aspect_ratio, (LSD - USD) * np.sin(np.radians(DIP)))
+	areas = lengths * widths
+	mags = np.array([wc.GetMagFromRuptureParams(RA=ra)['RA'].val for ra in areas])
+
+	## Determine magnitudes (spaced at least dM) and corresponding number of sections
+	idxs = [0]
+	for m, M in enumerate(mags[1:]):
+		if M - mags[idxs[-1]] >= dM:
+			idxs.append(m+1)
+	Mrange, num_sections = mags[idxs], section_nums[idxs]
+
+	## OBSOLETE: used to interpolate number of sections for a range of mags
+	#min_mag, max_mag = np.round(mags[0], 1), np.round(mags[-1], 1)
+	#Mrange = np.arange(min_mag, max_mag + dM/2, dM)
 
 	## Extract all possible ruptures with number of sections corresponding to
 	## given magnitude
-	Mrange = np.arange(5.6, 7.4 + dM/2, dM)
-	for M in Mrange:
-		num_sections = int(round(rshalib.utils.interpolate(mags, section_nums, M)))
-		linked_ruptures = [conn for conn in connections if len(conn) == num_sections]
-		rupture_model = fault_somo.get_linked_subfaults(linked_ruptures, characteristic=True)
+	#for M in Mrange:
+		#num_sections = int(round(rshalib.utils.interpolate(mags, section_nums, M)))
+
+	## Extract all possible ruptures with given number of sections
+	for M, num_sec in zip(Mrange, num_sections):
+		linked_ruptures = [conn for conn in connections if len(conn) == num_sec]
+		print("M=%.2f, len=%d, n=%d" % (M, num_sec, len(linked_ruptures)))
+		rupture_model = fault_somo.get_linked_subfaults(linked_ruptures, min_aspect_ratio=min_aspect_ratio, characteristic=True)
 		for flt in rupture_model:
 			flt.mfd = rshalib.mfd.CharacteristicMFD(M, 1, 0.1, num_sigma=0)
 		yield (M, rupture_model)
@@ -264,6 +292,7 @@ def read_evidence_site_info_from_txt(filespec, polygon_discretization=5):
 def read_evidence_site_info_from_gis(gis_filespec, event, polygon_discretization=5):
 	pe_thresholds, ne_thresholds = [], []
 	pe_polygons, ne_polygons = [], []
+	pe_site_names, ne_site_names = [], []
 
 	for rec in read_GIS_file(gis_filespec):
 		geom_type = rec["obj"].GetGeometryName()
@@ -281,12 +310,15 @@ def read_evidence_site_info_from_gis(gis_filespec, event, polygon_discretization
 			else:
 				[polygon] = points
 
+			site_name = rec["Name"]
 			if min_intensity:
 				pe_thresholds.append(min_intensity)
 				pe_polygons.append(polygon)
+				pe_site_names.append(site_name)
 			if max_intensity:
 				ne_thresholds.append(max_intensity)
 				ne_polygons.append(polygon)
+				ne_site_names.append(site_name)
 
 			"""
 			for constraint in constraints.split(';'):
@@ -305,13 +337,15 @@ def read_evidence_site_info_from_gis(gis_filespec, event, polygon_discretization
 
 	pe_site_models = []
 	for p, pe_polygon in enumerate(pe_polygons):
-		name = "Positive evidence #%d (I>%.1f)" % (p+1, pe_thresholds[p])
+		#name = "Positive evidence #%d (I>%.1f)" % (p+1, pe_thresholds[p])
+		name = "%s  (I>%.1f)" % (pe_site_names[p], pe_thresholds[p])
 		site_model = polygon_to_site_model(pe_polygon, name, polygon_discretization)
 		pe_site_models.append(site_model)
 
 	ne_site_models = []
 	for n, ne_polygon in enumerate(ne_polygons):
-		name = "Negative evidence #%d (I<%.1f)" % (n+1, ne_thresholds[n])
+		#name = "Negative evidence #%d (I<=%.1f)" % (n+1, ne_thresholds[n])
+		name = "%s  (I<=%.1f)" % (ne_site_names[n], ne_thresholds[n])
 		site_model = polygon_to_site_model(ne_polygon, name, polygon_discretization)
 		ne_site_models.append(site_model)
 
@@ -494,8 +528,9 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 
 	## Positive evidence
 	for pe_site_model in pe_site_models:
-		if pe_site_model.name in site_polygons:
-			pe_data = site_polygons[pe_site_model.name]
+		site_name = pe_site_model.name.split('(')[0].strip()
+		if site_name in site_polygons:
+			pe_data = site_polygons[site_name]
 			pe_style = lbm.PolygonStyle(line_width=0, fill_color='m', alpha=0.5)
 		else:
 			pe_style = lbm.PointStyle('+', size=8, line_width=1, line_color='m')
@@ -505,8 +540,9 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 
 	## Negative evidence
 	for ne_site_model in ne_site_models:
-		if ne_site_model.name in site_polygons:
-			ne_data = site_polygons[ne_site_model.name]
+		site_name = ne_site_model.name.split('(')[0].strip()
+		if site_name in site_polygons:
+			ne_data = site_polygons[site_name]
 			ne_style = lbm.PolygonStyle(line_width=0, fill_color='c', alpha=0.5)
 		else:
 			ne_style = lbm.PointStyle('_', size=8, line_width=1, line_color='c')
