@@ -1,6 +1,9 @@
+# -*- coding: iso-Latin-1 -*-
+
 import os
 import numpy as np
 import pylab
+import openquake.hazardlib as oqhazlib
 import hazard.rshalib as rshalib
 from rupture_probabilities import *
 
@@ -28,7 +31,7 @@ fig_folder = os.path.join(project_folder, "Figures", "Sensitivity", "v4")
 
 
 ## Parameters
-truncation_level = 2.5
+truncation_level = 1.0
 soil_params = rshalib.site.REF_SOIL_PARAMS
 polygon_discretization = 2.5
 imt = oqhazlib.imt.MMI()
@@ -46,6 +49,9 @@ models = ["Barrientos1980WithSigma", "BakunWentworth1997WithSigma", "AllenEtAl20
 weights = [0.32, 0.26, 0.25, 0.17]
 lt_gmpe_system_def = {TRT: rshalib.pmf.GMPEPMF(models, weights)}
 lt_integration_distance_dict = {"AtkinsonWald2007": (None, 30)}
+#TODO: apply distance filtering for BakunWentworth1997WithSigma when M larger than
+#threshold causing too high values in near field (to be determined)
+#lt_integration_distance_dict = {"AtkinsonWald2007": (None, 30), "BakunWentworth1997WithSigma": (20, None)}
 
 
 ## Read site info
@@ -59,8 +65,9 @@ for geom_type in ["Polygons", "Points"]:
 			all_site_models.append(site_model)
 print len(all_site_models)
 
-#for scenario in ["Quitralco", "Azul Tigre South", "2007", "Due East", "Due West"]:
-for scenario in ["Quitralco"]:
+
+scenarios = ["Quitralco", "Azul Tigre South", "2007", "Due East", "Due West"]
+for scenario in scenarios:
 	## Read rupture scenario
 	scenario_filespec = os.path.join(gis_folder, 'LOFZ_rupture_scenarios.TAB')
 	flt_src_model = read_fault_source_model(scenario_filespec)
@@ -70,7 +77,6 @@ for scenario in ["Quitralco"]:
 
 
 	## Set characteristic magnitude from MSR and fault area
-	import openquake.hazardlib as oqhazlib
 	msr = getattr(oqhazlib.scalerel, MSR)()
 	char_mag = msr.get_median_mag(scenflt.get_rupture().surface.get_area(), scenflt.rake)
 	print scenflt.get_length(), scenflt.width, char_mag
@@ -83,8 +89,11 @@ for scenario in ["Quitralco"]:
 	#delta_threshold = 0.5
 	delta_threshold = 0.
 
+	thresholds = [5.5, 6.5, 7.5]
+	threshold_sets = [[t] for t in thresholds] + [thresholds]
 	#for threshold_set in [6, 7, 8]:
-	for threshold_set in [(6, 7, 8)]:
+	#for threshold_set in [6, 7, 8, (6, 7, 8)]:
+	for threshold_set in threshold_sets:
 		## Construct ground-motion model
 		#ipe_name = "BakunWentworth1997WithSigma"
 		#ipe_name = "AtkinsonWald2007"
@@ -92,7 +101,7 @@ for scenario in ["Quitralco"]:
 		#ipe_name = "LogicTree"
 
 		ipe_names = ["LogicTree", "AllenEtAl2012", "AtkinsonWald2007", "BakunWentworth1997WithSigma", "Barrientos1980WithSigma"]
-		ipe_names = ipe_names[-2:-1]
+		#ipe_names = ipe_names[:1]
 		max_probs, section_probs, scenario_probs = {}, {}, {}
 		for ipe_name in ipe_names:
 			if ipe_name != "LogicTree":
@@ -100,15 +109,11 @@ for scenario in ["Quitralco"]:
 				gmpe_system_def = {TRT: rshalib.pmf.GMPEPMF([ipe_name], [1])}
 				integration_distance_dict = {}
 			else:
-				models = ["Barrientos1980WithSigma", "BakunWentworth1997WithSigma", "AllenEtAl2012", "AtkinsonWald2007"]
-				weights = [0.32, 0.26, 0.25, 0.17]
-				gmpe_system_def = {TRT: rshalib.pmf.GMPEPMF(models, weights)}
-				integration_distance_dict = {"AtkinsonWald2007": (None, 30)}
-				#TODO: apply distance filtering for BakunWentworth1997WithSigma when M larger than
-				#threshold causing too high values in near field (to be determined)
-				#integration_distance_dict = {"AtkinsonWald2007": (None, 30), "BakunWentworth1997WithSigma": (20, None)}
+				gmpe_system_def = lt_gmpe_system_def
+				integration_distance_dict = lt_integration_distance_dict
 
 			## Run DSHA model and determine pe_site_models and ne_site_models
+			## based on IPE logic tree
 			pe_thresholds, pe_site_models, ne_thresholds, ne_site_models = [], [], [], []
 			for threshold_mmi in threshold_set:
 				pe_threshold = threshold_mmi - delta_threshold
@@ -129,7 +134,7 @@ for scenario in ["Quitralco"]:
 						ne_site_models.append(site_model)
 						ne_thresholds.append(ne_threshold)
 
-			print len(pe_site_models), len(ne_site_models)
+			print("Positive: n=%d; Negative: n=%d" %(len(pe_site_models), len(ne_site_models)))
 
 			if not 0 in (len(pe_site_models), len(ne_site_models)):
 				## Compute probability for this scenario and threshold
@@ -140,24 +145,24 @@ for scenario in ["Quitralco"]:
 									strict_intersection=strict_intersection)
 				[scenario_prob] = prob_dict.values()[0]
 				scenario_probs[ipe_name] = scenario_prob
-				print scenario_prob
+				print("Scenario prob.: %s" % scenario_prob)
 
 
+				max_probs[ipe_name], section_probs[ipe_name] = [], []
+
+				## Perform test
+
+				## Discretize faults into floating ruptures
+				"""
 				## Magnitude range to test
 				dM = 0.25
 				Mrange = np.arange(scenflt.mfd.min_mag - 1, scenflt.mfd.min_mag + 1 + dM/2, dM)
-				"""
 				dM = 0.5
 				Mrange = np.linspace(scenflt.mfd.min_mag - dM, scenflt.mfd.min_mag + dM, 3)
 				#Mrange = [scenflt.mfd.min_mag]
 				Mrange = [6.9]
-				"""
 				print Mrange
 
-
-				## Test
-				max_probs[ipe_name], section_probs[ipe_name] = [], []
-				"""
 				for M in Mrange:
 					## Read fault source model
 					fault_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel2.TAB")
@@ -171,11 +176,14 @@ for scenario in ["Quitralco"]:
 						continue
 				"""
 
+				## Discretzie faults as network
 				dM = 0.2
 				Mrange = []
 				fault_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel3.TAB")
 				for M, source_model in read_fault_source_model_as_network(fault_filespec, dM=dM):
-					print("M=%.1f, n=%d" % (M, len(source_model)))
+					## 6.2, 6.8 and 7.2 crash with logictree!
+					#if M <= 6.0:
+					#	continue
 					Mrange.append(M)
 
 					## Find fault section closest to scenario rupture
@@ -215,7 +223,8 @@ for scenario in ["Quitralco"]:
 						else:
 							ipe_label = ipe_name
 						text_box = "Scenario: %s\nThreshold MMI: %s\nIPE: %s\nM: %.2f, Pmax: %.2f"
-						text_box %= (scenario, ', '.join([roman_intensity_dict[threshold_mmi] for threshold_mmi in threshold_set]), ipe_label, M, max_prob)
+						roman_intensity = ', '.join([get_roman_intensity(mmi) for mmi in threshold_set])
+						text_box %= (scenario, roman_intensity, ipe_label, M, max_prob)
 
 						title = ""
 						if len(threshold_set) == 1:
@@ -256,8 +265,9 @@ for scenario in ["Quitralco"]:
 				intensity = threshold_set[0]
 			else:
 				intensity = "mix"
-			pylab.title("%s scenario, MMI threshold = %s" % (scenario, intensity))
-			pylab.legend(loc=0)
+			intensity_label = roman_intensity = ', '.join([get_roman_intensity(mmi) for mmi in threshold_set])
+			pylab.title("%s scenario, MMI threshold = %s" % (scenario, intensity_label))
+			pylab.legend(loc=3)
 			fig_filename = "%s_MMI=%s_M_vs_prob.%s" % (scenario, intensity, output_format)
 			fig_filespec = os.path.join(fig_folder, fig_filename)
 			#fig_filespec = None
