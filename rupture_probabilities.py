@@ -382,7 +382,10 @@ def read_evidence_sites_from_gis(gis_filespec, polygon_discretization=5):
 
 def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
 								region, plot_point_ruptures=True, colormap="RdBu_r",
-								title=None, text_box=None, site_model_gis_file=None, fig_filespec=None):
+								title=None, text_box=None, site_model_gis_file=None,
+								prob_min=0., prob_max=1., highlight_max_prob_section=True,
+								max_prob_mag_precision=1, legend_label="Reduced probability",
+								neutral_site_models=[], fig_filespec=None):
 
 	## Extract source locations
 	x, y = [], []
@@ -446,15 +449,17 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 	else:
 		source_data = lbm.MultiLineData(x, y, values=values)
 		## Find rupture with highest probability for each magnitude
-		if source_model.get_fault_sources():
+		if highlight_max_prob_section and source_model.get_fault_sources():
 			mag_max_prob_id_dict = {}
 			for idx in idxs:
-				mag = values['mag'][idx]
+				mag = np.round(values['mag'][idx], max_prob_mag_precision)
 				prob = values['prob'][idx]
 				if prob and (not mag in mag_max_prob_id_dict or prob > mag_max_prob_id_dict[mag][1]):
 					mag_max_prob_id_dict[mag] = (idx, prob)
 			max_source_data = None
 			for mag, (idx, prob) in mag_max_prob_id_dict.items():
+				fault_id = prob_dict.keys()[idx]
+				#print("Max. prob.: %s (M=%.2f) %.2f" % (fault_id, mag, prob))
 				line_data = source_data[int(idx)]
 				if not max_source_data:
 					max_source_data = line_data.to_multi_line()
@@ -482,14 +487,14 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 	layers.append(layer)
 
 	## Sources
-	colorbar_style = lbm.ColorbarStyle("Reduced probability")
+	colorbar_style = lbm.ColorbarStyle(legend_label)
 	#thematic_color = lbm.ThematicStyleGradient([1E-3, 1E-2, 1E-1, 1], "RdBu_r", value_key='prob', colorbar_style=colorbar_style)
 	#thematic_color = lbm.ThematicStyleGradient([0.01, 0.05, 0.125, 0.25, 0.5, 1], "RdBu_r", value_key='prob', colorbar_style=colorbar_style)
 	#thematic_color = lbm.ThematicStyleColormap("Reds", vmin=0.001, vmax=max_prob_color, value_key='prob', colorbar_style=colorbar_style, alpha=1)
 	#if not max_prob_color:
 	#	max_prob_color = 1./ref_prob
 	#norm = matplotlib.colors.LogNorm(vmin=1./max_prob_color, vmax=max_prob_color)
-	norm = matplotlib.colors.Normalize(vmin=0, vmax=1)
+	norm = matplotlib.colors.Normalize(vmin=prob_min, vmax=prob_max)
 	thematic_color = lbm.ThematicStyleColormap(colormap, norm=norm, value_key='prob', colorbar_style=colorbar_style, alpha=1)
 	## zero probabilities
 	thematic_color.color_map.set_bad(thematic_color.color_map(0))
@@ -506,7 +511,8 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 		layer = lbm.MapLayer(source_data, style)
 	layers.append(layer)
 
-	if source_model.get_fault_sources():
+	## Highlight fault section with highest probability
+	if highlight_max_prob_section and source_model.get_fault_sources():
 		front_style = lbm.FrontStyle("asterisk", size=10, num_sides=1, angle=-45, interval=[0,1], alternate_sides=True)
 		style = lbm.LineStyle(line_width=0, front_style=front_style)
 		layer = lbm.MapLayer(max_source_data, style)
@@ -548,6 +554,18 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 			ne_style = lbm.PointStyle('_', size=8, line_width=1, line_color='c')
 			ne_data = lbm.MultiPointData(ne_site_model.lons, ne_site_model.lats)
 		layer = lbm.MapLayer(ne_data, ne_style)
+		layers.append(layer)
+
+	## Neutral
+	for site_model in neutral_site_models:
+		site_name = site_model.name.split('(')[0].strip()
+		if site_name in site_polygons:
+			site_data = site_polygons[site_name]
+			site_style = lbm.PolygonStyle(line_width=0, fill_color='gray', alpha=0.5)
+		else:
+			site_style = lbm.PointStyle('x', size=6, line_width=1, line_color='dimgrey')
+			site_data = lbm.MultiPointData(site_model.lons, site_model.lats)
+		layer = lbm.MapLayer(site_data, site_style)
 		layers.append(layer)
 
 
