@@ -26,10 +26,12 @@ for ipe_name in ipe_names:
 	#create_animated_gif(folder, img_basename)
 
 ## Scenario sensitivity figures
-scenarios = ["Quitralco", "Azul Tigre South", "2007", "Due East", "Due West"]
+#scenarios = ["Quitralco", "Azul Tigre South", "2007", "Due East", "Due West"]
+scenarios = ["Quitralco"]
 for scenario in scenarios:
-	for mmi in ["7.5", "mix"]:
-		for ipe_name in ["BakunWentworth1997WithSigma", "LogicTree"]:
+	for mmi in ["6.5", "9"]:
+		#for ipe_name in ["BakunWentworth1997WithSigma", "LogicTree"]:
+		for ipe_name in ["BakunWentworth1997WithSigma"]:
 			img_basename = "%s_MMI=%s_%s" % (scenario, mmi, ipe_name)
-			#print img_basename
-			#create_animated_gif(folder, img_basename)
+			print img_basename
+			create_animated_gif(folder, img_basename)
