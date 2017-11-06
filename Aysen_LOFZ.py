@@ -69,14 +69,6 @@ if __name__ == "__main__":
 	pt_src_model = rshalib.source.SourceModel("", [pt_source])
 
 
-	# Define GMPEs or IPEs
-	#gmpe_names = ["AtkinsonWald2007", "Barrientos1980", "BakunWentworth1997"]
-	gmpe_names = ["BakunWentworth1997"]
-	for gmpe_name in gmpe_names:
-		gmpe_system_def = {}
-		gmpe_pmf = rshalib.pmf.GMPEPMF([gmpe_name], [1])
-		gmpe_system_def[trt] = gmpe_pmf
-
 	#imt_periods = {'PGA': [0], 'SA': [0.25, 1.]}
 	#period_list = sorted(np.sum(imt_periods.values()))
 	imt_periods = {'MMI': [0]}
@@ -114,87 +106,95 @@ if __name__ == "__main__":
 					observed_intensities.append(mmi)
 
 
-	## Compute ground_motion field
-	print("Computing ground-motion maps...")
-	model_name = "Aysen Fjord"
-	dsha_model = rshalib.shamodel.DSHAModel(model_name, pt_src_model, gmpe_system_def,
-					grid_outline=grid_outline, grid_spacing=grid_spacing,
-					soil_site_model=soil_site_model, imt_periods=imt_periods,
-					truncation_level=truncation_level, integration_distance=integration_distance)
+	# Define GMPEs or IPEs
+	gmpe_names = ["AllenEtAl2012", "AtkinsonWald2007", "Barrientos1980", "BakunWentworth1997"]
+	#gmpe_names = ["BakunWentworth1997"]
+	for gmpe_name in gmpe_names:
+		gmpe_system_def = {}
+		gmpe_pmf = rshalib.pmf.GMPEPMF([gmpe_name], [1])
+		gmpe_system_def[trt] = gmpe_pmf
 
-	#correlation_model = oqhazlib.correlation.JB2009CorrelationModel(vs30_clustering=True)
-	#uhs_field = dsha_model.calc_gmf_fixed_epsilon_mp(num_cores=4, stddev_type="total")
-	uhs_field = dsha_model.calc_gmf_fixed_epsilon()
-	num_sites = uhs_field.num_sites
+		## Compute ground_motion field
+		print("Computing ground-motion maps...")
+		model_name = "Aysen Fjord"
+		dsha_model = rshalib.shamodel.DSHAModel(model_name, pt_src_model, gmpe_system_def,
+						grid_outline=grid_outline, grid_spacing=grid_spacing,
+						soil_site_model=soil_site_model, imt_periods=imt_periods,
+						truncation_level=truncation_level, integration_distance=integration_distance)
 
-
-	## Plot map
-	for T in period_list:
-		#norm = None
-		contour_interval = 0.5
-		breakpoints = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-		norm = PiecewiseLinearNorm(breakpoints)
-		#norm = LinearNorm(vmin=0, vmax=12)
-		title = "%s, Mw=%s, %s" % (date, MW, gmpe_name)
-		hm = uhs_field.getHazardMap(period_spec=T)
-		#map zonder kleuren
-		#hm.export_GeoTiff("raster.tiff", num_cells = 100)
-		#site_style = lbm.PointStyle(shape=".", line_color="k", size=0.5)
-		site_style = None
-		coastline_style = countries_style = lbm.LineStyle(line_width=0.75, line_color="dimgrey")
-		show_legend = False
-		map = hm.get_plot(graticule_interval=(1, 1), cmap="usgs", norm=norm,
-						contour_interval=contour_interval, num_grid_cells=num_sites,
-						title=title, projection="merc", site_style=site_style,
-						coastline_style=coastline_style, countries_style=countries_style,
-						source_model=pt_src_model, resolution="h", show_legend=show_legend)
-		#, contour_format="%.1f", colorbar_interval=1, gridlabel_format="%.1f"
-
-		## Add topographic hillshading
-		layer = map.get_layer_by_name("intensity_grid")
-		#elevation_grid = lbm.GdalRasterData(r"D:\GIS-data\DEM\Etopo2.bin", region=map.region)
-		elevation_grid = lbm.WCSData("http://seishaz.oma.be:8080/geoserver/wcs", "ngdc:etopo1_bedrock", region=map.region)
-		blend_mode = "soft"
-		hillshade_style = lbm.HillshadeStyle(0, 45, 1, blend_mode=blend_mode,
-												elevation_grid=elevation_grid)
-		layer.style.hillshade_style = hillshade_style
-		layer.style.pixelated = True
-
-		## Add faults
-		#gis_filespec = r"C:\Users\Katleen\OneDrive\UGent\2de Master\Thesis\Global Mapper\coastline.kml"
-		gis_filename = "LOFZ_breukenmodel.shp"
-		gis_filespec = os.path.join(gis_folder, gis_filename)
-		data = lbm.GisData(gis_filespec)
-		style = lbm.LineStyle(line_color='purple', line_width=2)
-		layer = lbm.MapLayer(data, style, legend_label="Faults")
-		map.layers.append(layer)
-
-		## Plot sites with observed intensities
-		lons = [site.lon for site in observation_sites]
-		lats = [site.lat for site in observation_sites]
-		labels = ["%s (%s)" % (site.name, roman_intensity_dict[mmi]) for (site, mmi) in zip(observation_sites, observed_intensities)]
-		data = lbm.MultiPointData(lons, lats, labels=labels)
-		label_style = lbm.TextStyle(font_size=10, horizontal_alignment="left", offset=(8,0))
-		style = lbm.PointStyle(shape='s', size=7, fill_color='k', label_style=label_style)
-		layer = lbm.MapLayer(data, style, legend_label="Intensity observations")
-		map.layers.append(layer)
-
-		#print map.map.proj4string
-		#print map.get_srs().ExportToWkt()
-
-		# colorbar aanpassen, niet weergeven = None
-		#for layer in map.layers:
-		#    if isinstance(layer.data, lbm.GridData):
-		#	layer.style.color_map_theme.colorbar_style = None
+		#correlation_model = oqhazlib.correlation.JB2009CorrelationModel(vs30_clustering=True)
+		#uhs_field = dsha_model.calc_gmf_fixed_epsilon_mp(num_cores=4, stddev_type="total")
+		uhs_field = dsha_model.calc_gmf_fixed_epsilon()
+		num_sites = uhs_field.num_sites
 
 
-		#if len(gmpe_names) == 1:
-		#	gmpe_name = gmpe_names[0]
-		#else:
-		#	gmpe_name = "AverageGMPE"
+		## Plot map
+		for T in period_list:
+			#norm = None
+			contour_interval = 0.5
+			breakpoints = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+			norm = PiecewiseLinearNorm(breakpoints)
+			#norm = LinearNorm(vmin=0, vmax=12)
+			title = "%s, Mw=%s, %s" % (date, MW, gmpe_name)
+			hm = uhs_field.getHazardMap(period_spec=T)
+			#map zonder kleuren
+			#hm.export_GeoTiff("raster.tiff", num_cells = 100)
+			#site_style = lbm.PointStyle(shape=".", line_color="k", size=0.5)
+			site_style = None
+			coastline_style = countries_style = lbm.LineStyle(line_width=0.75, line_color="dimgrey")
+			show_legend = False
+			map = hm.get_plot(graticule_interval=(1, 1), cmap="usgs", norm=norm,
+							contour_interval=contour_interval, num_grid_cells=num_sites,
+							title=title, projection="merc", site_style=site_style,
+							coastline_style=coastline_style, countries_style=countries_style,
+							source_model=pt_src_model, resolution="h", show_legend=show_legend)
+			#, contour_format="%.1f", colorbar_interval=1, gridlabel_format="%.1f"
 
-		fig_filename = "%s_%s.PNG" % (event_ID, gmpe_name)
-		#fig_filespec = os.path.join(fig_folder, fig_filename)
-		fig_filespec = None
-		#map.export_geotiff(out_filespec=out_filespec)
-		map.plot(fig_filespec=fig_filespec, dpi=200)
+			## Add topographic hillshading
+			layer = map.get_layer_by_name("intensity_grid")
+			#elevation_grid = lbm.GdalRasterData(r"D:\GIS-data\DEM\Etopo2.bin", region=map.region)
+			elevation_grid = lbm.WCSData("http://seishaz.oma.be:8080/geoserver/wcs", "ngdc:etopo1_bedrock", region=map.region)
+			blend_mode = "soft"
+			hillshade_style = lbm.HillshadeStyle(0, 45, 1, blend_mode=blend_mode,
+													elevation_grid=elevation_grid)
+			layer.style.hillshade_style = hillshade_style
+			layer.style.pixelated = True
+
+			## Add faults
+			#gis_filespec = r"C:\Users\Katleen\OneDrive\UGent\2de Master\Thesis\Global Mapper\coastline.kml"
+			gis_filename = "LOFZ_breukenmodel.shp"
+			gis_filespec = os.path.join(gis_folder, gis_filename)
+			data = lbm.GisData(gis_filespec)
+			style = lbm.LineStyle(line_color='purple', line_width=2)
+			layer = lbm.MapLayer(data, style, legend_label="Faults")
+			map.layers.append(layer)
+
+			## Plot sites with observed intensities
+			lons = [site.lon for site in observation_sites]
+			lats = [site.lat for site in observation_sites]
+			labels = ["%s (%s)" % (site.name, roman_intensity_dict[mmi]) for (site, mmi) in zip(observation_sites, observed_intensities)]
+			data = lbm.MultiPointData(lons, lats, labels=labels)
+			label_style = lbm.TextStyle(font_size=10, horizontal_alignment="left", offset=(8,0))
+			style = lbm.PointStyle(shape='s', size=7, fill_color='k', label_style=label_style)
+			layer = lbm.MapLayer(data, style, legend_label="Intensity observations")
+			map.layers.append(layer)
+
+			#print map.map.proj4string
+			#print map.get_srs().ExportToWkt()
+
+			# colorbar aanpassen, niet weergeven = None
+			#for layer in map.layers:
+			#    if isinstance(layer.data, lbm.GridData):
+			#	layer.style.color_map_theme.colorbar_style = None
+
+
+			#if len(gmpe_names) == 1:
+			#	gmpe_name = gmpe_names[0]
+			#else:
+			#	gmpe_name = "AverageGMPE"
+
+			fig_filename = "%s_%s.PNG" % (event_ID, gmpe_name)
+			fig_filespec = os.path.join(fig_folder, fig_filename)
+			#fig_filespec = None
+			#map.export_geotiff(out_filespec=out_filespec)
+			map.plot(fig_filespec=fig_filespec, dpi=200)
