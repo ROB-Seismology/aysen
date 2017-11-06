@@ -73,7 +73,7 @@ for M, source_model in read_fault_source_model_as_network(fault_filespec, dM=dM)
 
 
 ## Loop over IPEs
-for ipe_name in ipe_models[:1] + ipe_models[2:]:
+for ipe_name in ipe_models[1:2]:
 	print ipe_name
 	if ipe_name != "LogicTree":
 		trt_gsim_dict = {TRT: ipe_name}
@@ -86,8 +86,8 @@ for ipe_name in ipe_models[:1] + ipe_models[2:]:
 	## Loop over scenario magnitudes and corresponding fault networks
 	for scen_mag, scen_flt_network in zip(fault_mags, fault_networks):
 		#if not (6.2 <= scen_mag <= 6.3):
-		#if scen_mag < 6.5:
-		#	continue
+		if scen_mag > 5.2:
+			continue
 		print("M=%.2f" % scen_mag)
 		respow_dict = {}
 
@@ -169,6 +169,7 @@ for ipe_name in ipe_models[:1] + ipe_models[2:]:
 			mag_diffs = np.array(mag_diffs)
 			mag_diffs /= (fault_mags[-1] - fault_mags[0])
 			dx = np.sqrt(0.5 * ((1-mag_diffs)**2 + (1-distances)**2))
+			#dx = np.sqrt(0.5 * (mag_diffs**2 + distances**2))
 			## Reduce impact of probabilities slightly larger than scenario prob
 			## for nearby ruptures with similar magnitude
 			prob_diffs = scenario_prob - np.array(all_probs)
