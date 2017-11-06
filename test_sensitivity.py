@@ -67,6 +67,7 @@ print len(all_site_models)
 
 
 scenarios = ["Quitralco", "Azul Tigre South", "2007", "Due East", "Due West"]
+scenarios = ["Quitralco"]
 for scenario in scenarios:
 	## Read rupture scenario
 	scenario_filespec = os.path.join(gis_folder, 'LOFZ_rupture_scenarios.TAB')
@@ -91,6 +92,7 @@ for scenario in scenarios:
 
 	thresholds = [5.5, 6.5, 7.5]
 	threshold_sets = [[t] for t in thresholds] + [thresholds]
+	threshold_sets = [[9]]
 	#for threshold_set in [6, 7, 8]:
 	#for threshold_set in [6, 7, 8, (6, 7, 8)]:
 	for threshold_set in threshold_sets:
@@ -101,7 +103,7 @@ for scenario in scenarios:
 		#ipe_name = "LogicTree"
 
 		ipe_names = ["LogicTree", "AllenEtAl2012", "AtkinsonWald2007", "BakunWentworth1997WithSigma", "Barrientos1980WithSigma"]
-		#ipe_names = ipe_names[:1]
+		ipe_names = ipe_names[3:4]
 		max_probs, section_probs, scenario_probs = {}, {}, {}
 		for ipe_name in ipe_names:
 			if ipe_name != "LogicTree":
@@ -136,7 +138,8 @@ for scenario in scenarios:
 
 			print("Positive: n=%d; Negative: n=%d" %(len(pe_site_models), len(ne_site_models)))
 
-			if not 0 in (len(pe_site_models), len(ne_site_models)):
+			#if not 0 in (len(pe_site_models), len(ne_site_models)):
+			if True:
 				## Compute probability for this scenario and threshold
 				prob_dict = calc_rupture_probability_from_ground_motion_thresholds(
 									scenario_src_model, lt_gmpe_system_def, imt, pe_site_models,
@@ -182,7 +185,7 @@ for scenario in scenarios:
 				fault_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel3.TAB")
 				for M, source_model in read_fault_source_model_as_network(fault_filespec, dM=dM):
 					## 6.2, 6.8 and 7.2 crash with logictree!
-					#if M <= 6.0:
+					#if M <= 7.1:
 					#	continue
 					Mrange.append(M)
 
@@ -218,6 +221,7 @@ for scenario in scenarios:
 
 					## Plot map
 					if ipe_name in ("LogicTree", "BakunWentworth1997WithSigma"):
+					#if ipe_name in ("AllenEtAl2012", "AtkinsonWald2007"):
 						if "WithSigma" in ipe_name:
 							ipe_label = ipe_name[:ipe_name.find("WithSigma")]
 						else:
@@ -244,6 +248,7 @@ for scenario in scenarios:
 
 
 		## Plot max_prob vs magnitude
+		"""
 		if section_probs:
 			colors = ['r', 'b', 'g', 'm', 'k']
 			for ipe_name, color in zip(ipe_names, colors):
@@ -275,3 +280,4 @@ for scenario in scenarios:
 				pylab.savefig(fig_filespec, dpi=200)
 			else:
 				pylab.show()
+		"""
