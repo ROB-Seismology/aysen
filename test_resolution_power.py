@@ -11,7 +11,7 @@ mag = scenario_mag
 dist = 0
 cases.append((title, prob, mag, dist))
 
-title = "Maximum"
+title = "Maximum difference"
 prob = 0
 mag = scenario_mag + 1
 dist = 1
@@ -61,8 +61,8 @@ cases.append((title, prob, mag, dist))
 
 title = "Very different magnitude, very different location, same low probability"
 prob = 0.2
-mag = scenario_mag + 1
-dist = 1
+mag = scenario_mag + 0.75
+dist = 0.75
 cases.append((title, prob, mag, dist))
 
 title = "Slightly different from scenario"
@@ -106,12 +106,16 @@ for title, prob, mag, dist in cases:
 	print("  prob_diff=%s" % prob_diff)
 	print("  mag_diff=%s" % mag_diff)
 	## dx: max. = 1
-	dx = np.sqrt(0.5 * ((1-mag_diff)**2 + (1-dist)**2))
-	print("  dx=%s" % dx)
+	dx1 = np.sqrt(0.5 * ((1-mag_diff)**2 + (1-dist)**2))
+	dx2= np.sqrt(0.5 * (mag_diff**2 + dist**2))
+	print("  dx1=%s" % dx1)
+	print("  dx2=%s" % dx2)
 	## if dx is 1, res_pow varies between 0 and 1:
 	## - if all probs are zero, res_pow = 1
 	## - if all probs are equal to scenario_prob, res_pow = 0
 	#res_pow = np.sum(prob_diffs * dx) / (scenario_prob * (len(prob_diffs)-1))
 	#res_pow = np.mean(prob_diffs * dx) / scenario_prob
-	res_pow = prob_diff * dx
-	print("  res_pow=%s" % res_pow)
+	res_pow1 = prob_diff * dx1
+	res_pow2 = prob_diff * dx2
+	print("  res_pow1=%s" % res_pow1)
+	print("  res_pow2=%s" % res_pow2)
