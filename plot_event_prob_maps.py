@@ -7,8 +7,8 @@ from rupture_probabilities import *
 # TODO: check if negative evidence can be more strict (higher or lower probabilities?): event SL-C
 
 
-#project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
-project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
+project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
+#project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
 gis_folder = os.path.join(project_folder, "GIS")
 
 
@@ -19,8 +19,9 @@ events = events[:1]
 
 
 ## IPE names
-ipe_names = ["LogicTree", "AllenEtAl2012", "AtkinsonWald2007", "BakunWentworth1997WithSigma", "Barrientos1980WithSigma"]
+#ipe_names = ["LogicTree", "AllenEtAl2012", "AtkinsonWald2007", "BakunWentworth1997WithSigma", "Barrientos1980WithSigma"]
 #ipe_names = ipe_names[3:4]
+ipe_names = ["BakunWentworth1997WithSigma"]
 
 
 ## Parameters
