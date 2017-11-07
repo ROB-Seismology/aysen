@@ -1,3 +1,4 @@
+# -*- coding: iso-Latin-1 -*-
 
 import os
 import numpy as np
