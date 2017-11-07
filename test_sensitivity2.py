@@ -8,8 +8,8 @@ import hazard.rshalib as rshalib
 from rupture_probabilities import *
 
 
-#project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
-project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
+project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
+#project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
 gis_folder = os.path.join(project_folder, "GIS")
 fig_folder = os.path.join(project_folder, "Figures", "Sensitivity", "v4")
 
@@ -63,7 +63,7 @@ for geom_type in ["Polygons", "Points"]:
 print len(all_site_models)
 
 
-## Discretzie faults as network
+## Discretize faults as network
 fault_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel3.TAB")
 dM = 0.2
 fault_mags, fault_networks = [], []
@@ -71,6 +71,14 @@ for M, source_model in read_fault_source_model_as_network(fault_filespec, dM=dM)
 	fault_mags.append(M)
 	fault_networks.append(source_model)
 
+"""
+source_model = fault_networks[0]
+data = source_model.to_lbm_data()
+print data.lines[0].to_wkt()
+from mapping.layeredbasemap.data_types import export_ogr
+export_ogr(data.lines, "faults")
+exit()
+"""
 
 ## Loop over IPEs
 for ipe_name in ipe_models[1:2]:
