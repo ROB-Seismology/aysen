@@ -46,7 +46,7 @@ if __name__ == "__main__":
 		date = datetime.date(2007, 4, 21)
 		time = datetime.time(17, 53, int(round(40.80)))
 		#strike, dip, rake = 354, 88, 176
-		strike, dip, rake = 20, 90, 180	## Strike from LOFZ faults
+		strike, dip, rake = 20, 89, 180	## Strike from LOFZ faults
 
 	## 02/04/2007, epicenter from Russo et al. (2011)
 	elif event_ID == "20070402":
@@ -81,7 +81,8 @@ if __name__ == "__main__":
 	## Define site model
 	#grid_outline = [-74, -71, -46, -44.5]
 	grid_outline = [-74, -71, -46.35, -44.85]
-	grid_spacing = (0.1, 0.1)
+	#grid_spacing = (0.1, 0.1)
+	grid_spacing = (1./60, 1./60)
 	soil_site_model = None
 
 
@@ -108,7 +109,7 @@ if __name__ == "__main__":
 
 	# Define GMPEs or IPEs
 	gmpe_names = ["AllenEtAl2012", "AtkinsonWald2007", "Barrientos1980", "BakunWentworth1997"]
-	#gmpe_names = ["BakunWentworth1997"]
+	gmpe_names = ["BakunWentworth1997"]
 	for gmpe_name in gmpe_names:
 		gmpe_system_def = {}
 		gmpe_pmf = rshalib.pmf.GMPEPMF([gmpe_name], [1])
@@ -123,12 +124,13 @@ if __name__ == "__main__":
 						truncation_level=truncation_level, integration_distance=integration_distance)
 
 		#correlation_model = oqhazlib.correlation.JB2009CorrelationModel(vs30_clustering=True)
-		#uhs_field = dsha_model.calc_gmf_fixed_epsilon_mp(num_cores=4, stddev_type="total")
-		uhs_field = dsha_model.calc_gmf_fixed_epsilon()
+		#uhs_field = dsha_model.calc_gmf_fixed_epsilon_mp(num_cores=3, stddev_type="total")
+		uhs_field = dsha_model.calc_gmf_fixed_epsilon_mp(num_cores=3,
+							stddev_type="total", np_aggregation="avg")
 		num_sites = uhs_field.num_sites
 
-
 		## Plot map
+		print("Plotting map")
 		for T in period_list:
 			#norm = None
 			contour_interval = 0.5
@@ -144,7 +146,7 @@ if __name__ == "__main__":
 			coastline_style = countries_style = lbm.LineStyle(line_width=0.75, line_color="dimgrey")
 			show_legend = False
 			map = hm.get_plot(graticule_interval=(1, 1), cmap="usgs", norm=norm,
-							contour_interval=contour_interval, num_grid_cells=num_sites,
+							contour_interval=contour_interval, num_grid_cells=None,
 							title=title, projection="merc", site_style=site_style,
 							coastline_style=coastline_style, countries_style=countries_style,
 							source_model=pt_src_model, resolution="h", show_legend=show_legend)
@@ -195,6 +197,7 @@ if __name__ == "__main__":
 
 			fig_filename = "%s_%s.PNG" % (event_ID, gmpe_name)
 			fig_filespec = os.path.join(fig_folder, fig_filename)
+			fig_filespec = r"C:\Temp\Aysen_test.png"
 			#fig_filespec = None
 			#map.export_geotiff(out_filespec=out_filespec)
 			map.plot(fig_filespec=fig_filespec, dpi=200)
