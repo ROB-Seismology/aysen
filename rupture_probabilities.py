@@ -170,7 +170,8 @@ def read_fault_source_model_as_floating_ruptures(gis_filespec, min_mag, max_mag,
 	return rshalib.source.SourceModel(somo_name, sources)
 
 
-def read_fault_source_model_as_network(gis_filespec, section_len=2.85, dM=0.2, max_strike_delta=60):
+def read_fault_source_model_as_network(gis_filespec, section_len=2.85, dM=0.2,
+										max_strike_delta=60, characteristic=True):
 	import eqgeology.Scaling.WellsCoppersmith1994 as wc
 
 	## Read fault model
@@ -215,7 +216,8 @@ def read_fault_source_model_as_network(gis_filespec, section_len=2.85, dM=0.2, m
 	for M, num_sec in zip(Mrange, num_sections):
 		linked_ruptures = [conn for conn in connections if len(conn) == num_sec]
 		print("M=%.2f, len=%d, n=%d" % (M, num_sec, len(linked_ruptures)))
-		rupture_model = fault_somo.get_linked_subfaults(linked_ruptures, min_aspect_ratio=min_aspect_ratio, characteristic=True)
+		rupture_model = fault_somo.get_linked_subfaults(linked_ruptures,
+				min_aspect_ratio=min_aspect_ratio, characteristic=characteristic)
 		for flt in rupture_model:
 			flt.mfd = rshalib.mfd.CharacteristicMFD(M, 1, 0.1, num_sigma=0)
 		yield (M, rupture_model)
