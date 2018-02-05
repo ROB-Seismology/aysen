@@ -8,8 +8,14 @@ from mapping.geotools.readGIS import read_GIS_file
 import mapping.layeredbasemap as lbm
 import openquake.hazardlib as oqhazlib
 import hazard.rshalib as rshalib
-from hazard.rshalib.calc.calc import calc_rupture_probability_from_ground_motion_thresholds
+from hazard.rshalib.source_estimation import calc_rupture_probability_from_ground_motion_thresholds
 from hazard.rshalib.source.read_from_gis import import_source_model_from_gis
+
+
+## Folder locations
+#project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
+project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
+gis_folder = os.path.join(project_folder, "GIS")
 
 
 ## Common parameters for area and fault sources
@@ -33,6 +39,24 @@ def get_roman_intensity(intensity):
 	if dec == 0.5:
 		roman_intensity += '½'
 	return roman_intensity.decode('Latin-1')
+
+
+def create_point_source(lon, lat, mag, depth, strike, dip, rake, id=""):
+	point = rshalib.geo.Point(lon, lat)
+	name = "%.2f, %.2f" % (lon, lat)
+
+	dM = 0.1
+	mfd = rshalib.mfd.EvenlyDiscretizedMFD(mag, dM, np.ones(1))
+
+	nopl = rshalib.geo.NodalPlane(strike, dip, rake)
+	npd = rshalib.pmf.NodalPlaneDistribution([nopl], [1])
+
+	hdd = rshalib.pmf.HypocentralDepthDistribution([depth], [1])
+
+	source = rshalib.source.PointSource(id, name, TRT, mfd, RMS, MSR, RAR,
+										USD, LSD, point, npd, hdd)
+
+	return source
 
 
 def create_uniform_grid_source_model(grid_outline, grid_spacing, min_mag,
@@ -171,7 +195,7 @@ def read_fault_source_model_as_floating_ruptures(gis_filespec, min_mag, max_mag,
 
 
 def read_fault_source_model_as_network(gis_filespec, section_len=2.85, dM=0.2,
-										max_strike_delta=60, characteristic=True):
+					num_sections=None, max_strike_delta=60, characteristic=True):
 	import eqgeology.Scaling.WellsCoppersmith1994 as wc
 
 	## Read fault model
@@ -196,12 +220,18 @@ def read_fault_source_model_as_network(gis_filespec, section_len=2.85, dM=0.2,
 	areas = lengths * widths
 	mags = np.array([wc.GetMagFromRuptureParams(RA=ra)['RA'].val for ra in areas])
 
-	## Determine magnitudes (spaced at least dM) and corresponding number of sections
-	idxs = [0]
-	for m, M in enumerate(mags[1:]):
-		if M - mags[idxs[-1]] >= dM:
-			idxs.append(m+1)
-	Mrange, num_sections = mags[idxs], section_nums[idxs]
+	if num_sections is None:
+		## Determine magnitudes (spaced at least dM) and corresponding number of sections
+		idxs = [0]
+		for m, M in enumerate(mags[1:]):
+			if M - mags[idxs[-1]] >= dM:
+				idxs.append(m+1)
+		Mrange, num_sections = mags[idxs], section_nums[idxs]
+	else:
+		if isinstance(num_sections, int):
+			num_sections = [num_sections]
+		idxs = np.array(num_sections) - 1
+		Mrange = mags[idxs]
 
 	## OBSOLETE: used to interpolate number of sections for a range of mags
 	#min_mag, max_mag = np.round(mags[0], 1), np.round(mags[-1], 1)
@@ -588,6 +618,114 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 	else:
 		dpi = 90
 	map.plot(fig_filespec=fig_filespec, dpi=dpi)
+
+
+def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
+						ne_site_models, region=None, colormap="RdYlGn_r",
+						title=None, text_box=None, site_model_gis_file=None,
+						neutral_site_models=[], fig_filespec=None):
+	layers = []
+
+	lon_grid, lat_grid = grd_source_model.lon_grid, grd_source_model.lat_grid
+	min_mag, max_mag = np.floor(np.nanmin(mag_grid)), np.ceil(np.nanmax(mag_grid))
+	if region is None:
+		region = grd_source_model.grid_outline
+
+	## Magnitude contours
+	grid_data = lbm.MeshGridData(lon_grid, lat_grid, mag_grid)
+	#colormap = "jet"
+	color_map_theme = lbm.ThematicStyleColormap(color_map=colormap, vmin=min_mag, vmax=max_mag)
+	color_map_theme.color_map.set_under('w')
+	colorbar_title = "Magnitude"
+	contour_levels = np.arange(min_mag, max_mag + 0.5, 0.5)
+	contour_line_style = lbm.LineStyle(label_style=lbm.TextStyle())
+	colorbar_style = lbm.ColorbarStyle(colorbar_title, format="%.1f")
+	grid_style = lbm.GridStyle(color_map_theme, color_gradient="continuous",
+					line_style=contour_line_style, contour_levels=contour_levels,
+					colorbar_style=colorbar_style)
+	layer = lbm.MapLayer(grid_data, grid_style)
+	layers.append(layer)
+
+	## RMS contours
+	if rms_grid is not None:
+		grid_data = lbm.MeshGridData(lon_grid, lat_grid, rms_grid)
+		contour_levels = np.arange(0, 1, 0.1)
+		contour_line_style = lbm.LineStyle(line_pattern='--', label_style=lbm.TextStyle())
+		grid_style = lbm.GridStyle(None, color_gradient=None, line_style=contour_line_style,
+									contour_levels=contour_levels, colorbar_style=None)
+		layer = lbm.MapLayer(grid_data, grid_style)
+		layers.append(layer)
+
+	## Observation sites
+	## Read polygons from GIS file if specified
+	site_polygons = {}
+	if site_model_gis_file:
+		site_data = lbm.GisData(site_model_gis_file, label_colname='Name')
+		site_data = site_data.get_data()[-1]
+		for polygon in site_data:
+			site_polygons[polygon.label] = polygon
+
+	## Positive evidence
+	for pe_site_model in pe_site_models:
+		site_name = pe_site_model.name.split('(')[0].strip()
+		if site_name in site_polygons:
+			pe_data = site_polygons[site_name]
+			pe_style = lbm.PolygonStyle(line_width=0, fill_color='m', alpha=0.5)
+		else:
+			pe_style = lbm.PointStyle('+', size=8, line_width=1, line_color='m')
+			pe_data = lbm.MultiPointData(pe_site_model.lons, pe_site_model.lats)
+		layer = lbm.MapLayer(pe_data, pe_style)
+		layers.append(layer)
+
+	## Negative evidence
+	for ne_site_model in ne_site_models:
+		site_name = ne_site_model.name.split('(')[0].strip()
+		if site_name in site_polygons:
+			ne_data = site_polygons[site_name]
+			ne_style = lbm.PolygonStyle(line_width=0, fill_color='c', alpha=0.5)
+		else:
+			ne_style = lbm.PointStyle('_', size=8, line_width=1, line_color='c')
+			ne_data = lbm.MultiPointData(ne_site_model.lons, ne_site_model.lats)
+		layer = lbm.MapLayer(ne_data, ne_style)
+		layers.append(layer)
+
+	## Neutral
+	for site_model in neutral_site_models:
+		site_name = site_model.name.split('(')[0].strip()
+		if site_name in site_polygons:
+			site_data = site_polygons[site_name]
+			site_style = lbm.PolygonStyle(line_width=0, fill_color='gray', alpha=0.5)
+		else:
+			site_style = lbm.PointStyle('x', size=6, line_width=1, line_color='dimgrey')
+			site_data = lbm.MultiPointData(site_model.lons, site_model.lats)
+		layer = lbm.MapLayer(site_data, site_style)
+		layers.append(layer)
+
+	## Coastlines
+	data = lbm.BuiltinData("coastlines")
+	style = lbm.LineStyle()
+	layer = lbm.MapLayer(data, style)
+	layers.append(layer)
+
+	## Add faults
+	gis_filename = "LOFZ_breukenmodel.shp"
+	gis_filespec = os.path.join(gis_folder, gis_filename)
+	data = lbm.GisData(gis_filespec)
+	style = lbm.LineStyle(line_color='purple', line_width=2)
+	layer = lbm.MapLayer(data, style, legend_label="Faults")
+	layers.append(layer)
+
+	legend_style = None
+	title = ""
+	map = lbm.LayeredBasemap(layers, title, projection="merc", region=region,
+			title_style=lbm.DefaultTitleTextStyle, graticule_style=lbm.GraticuleStyle(),
+			graticule_interval=(1, 0.5), resolution='h',
+			legend_style=legend_style)
+
+	if fig_filespec:
+		map.plot(fig_filespec=fig_filespec, dpi=200)
+
+	return map
 
 
 
