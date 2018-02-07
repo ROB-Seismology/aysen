@@ -1,15 +1,12 @@
 import os
 import numpy as np
 import hazard.rshalib as rshalib
-from rupture_probabilities import *
+from aysenlib import *
 
 
 # TODO: check if negative evidence can be more strict (higher or lower probabilities?): event SL-C
 
-
-project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
-#project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
-gis_folder = os.path.join(project_folder, "GIS")
+from aysenlib import (project_folder, gis_folder)
 
 
 ## Event names
@@ -69,7 +66,7 @@ for M, source_model in read_fault_source_model_as_network(fault_filespec, dM=dM)
 		if M == Mrange[0]:
 			max_prob_dict[event] = {}
 			section_prob_dict[event] = {}
-		fig_folder = os.path.join(project_folder, "Figures", event)
+		fig_folder = os.path.join(project_folder, "Figures", "Events", "v2", event)
 		if not os.path.exists(fig_folder):
 			os.mkdir(fig_folder)
 
@@ -185,7 +182,7 @@ for event in events:
 	pylab.title("Event: %s" % event)
 	pylab.legend(loc=3)
 
-	fig_folder = os.path.join(project_folder, "Figures", event)
+	fig_folder = os.path.join(project_folder, "Figures", "Events", "v2", event)
 	fig_filename = "%s_M_vs_prob.%s" % (event, output_format)
 	fig_filespec = os.path.join(fig_folder, fig_filename)
 	#fig_filespec = None

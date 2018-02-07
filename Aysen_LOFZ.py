@@ -7,9 +7,7 @@ import os
 
 
 ## Folder locations
-#project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
-project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
-gis_folder = os.path.join(project_folder, "GIS")
+from aysenlib import (project_folder, gis_folder)
 fig_folder = os.path.join(project_folder, "Figures")
 
 
