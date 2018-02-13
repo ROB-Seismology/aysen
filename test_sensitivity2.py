@@ -5,12 +5,13 @@ import numpy as np
 import pylab
 import openquake.hazardlib as oqhazlib
 import hazard.rshalib as rshalib
-from rupture_probabilities import *
+from hazard.rshalib.source_estimation import calc_rupture_probability_from_ground_motion_thresholds
+from aysenlib import (project_folder, gis_folder, read_evidence_sites_from_gis,
+						read_fault_source_model_as_network, get_roman_intensity,
+						plot_rupture_probabilities, TRT, MSR)
 
 
-project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
-#project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
-gis_folder = os.path.join(project_folder, "GIS")
+
 fig_folder = os.path.join(project_folder, "Figures", "Sensitivity", "v4")
 
 

@@ -5,12 +5,13 @@ import numpy as np
 import pylab
 import openquake.hazardlib as oqhazlib
 import hazard.rshalib as rshalib
-from rupture_probabilities import *
+from hazard.rshalib.source_estimation import calc_rupture_probability_from_ground_motion_thresholds
+from aysenlib import (project_folder, gis_folder, read_evidence_sites_from_gis,
+						read_fault_source_model, read_fault_source_model_as_floating_ruptures,
+						read_fault_source_model_as_network, get_roman_intensity,
+						plot_rupture_probabilities, TRT, MSR)
 
 
-project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
-#project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
-gis_folder = os.path.join(project_folder, "GIS")
 fig_folder = os.path.join(project_folder, "Figures", "Sensitivity", "v4")
 
 
@@ -265,7 +266,7 @@ for scenario in scenarios:
 			pylab.xlim(Mrange[0], Mrange[-1])
 			pylab.ylim(0, 1)
 			pylab.xlabel("Magnitude")
-			pylab.ylabel("Probability")
+			pylab.ylabel("Max. normalized probability")
 			if len(threshold_set) == 1:
 				intensity = threshold_set[0]
 			else:

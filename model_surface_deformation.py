@@ -15,7 +15,7 @@ import numpy as np
 import mapping.layeredbasemap as lbm
 from eqgeology.faultlib import okada
 
-from rupture_probabilities import read_fault_source_model_as_network, read_fault_source_model
+from aysenlib import (read_fault_source_model_as_network, read_fault_source_model)
 
 
 ## Folders

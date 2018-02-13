@@ -2,12 +2,10 @@
 import os
 import mapping.layeredbasemap as lbm
 from hazard.rshalib.source.read_from_gis import import_source_model_from_gis
-from rupture_probabilities import *
+from aysenlib import (import_source_model_from_gis, project_folder, gis_folder)
 
 
-#project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
-project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
-gis_folder = os.path.join(project_folder, "GIS")
+
 fig_folder = os.path.join(project_folder, "Figures")
 
 
@@ -18,7 +16,7 @@ output_format = "png"
 
 fig_filename = "Scenario_and_site_map.%s" % output_format
 fig_filespec = os.path.join(fig_folder, fig_filename)
-#fig_filespec = None
+fig_filespec = None
 
 
 layers = []

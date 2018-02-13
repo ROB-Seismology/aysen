@@ -1,11 +1,8 @@
 import os
 import hazard.rshalib as rshalib
-from rupture_probabilities import *
+from aysenlib import (read_fault_source_model, project_folder, gis_folder)
 
 
-#project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
-project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
-gis_folder = os.path.join(project_folder, "GIS")
 
 gis_filename = "LOFZ_breukenmodel3.TAB"
 gis_filespec = os.path.join(gis_folder, gis_filename)

@@ -24,7 +24,7 @@ if __name__ == "__main__":
 	import mapping.layeredbasemap as lbm
 	from mapping.layeredbasemap.cm.norm import PiecewiseLinearNorm, LinearNorm
 	import eqcatalog
-	from rupture_probabilities import roman_intensity_dict
+	from aysenlib import roman_intensity_dict
 
 
 	## Common parameters
