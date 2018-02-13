@@ -417,7 +417,7 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 								region, plot_point_ruptures=True, colormap="RdBu_r",
 								title=None, text_box=None, site_model_gis_file=None,
 								prob_min=0., prob_max=1., highlight_max_prob_section=True,
-								max_prob_mag_precision=1, legend_label="Reduced probability",
+								max_prob_mag_precision=1, legend_label="Normalized probability",
 								neutral_site_models=[], fig_filespec=None):
 
 	## Extract source locations
@@ -623,11 +623,13 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 						ne_site_models, region=None, colormap="RdYlGn_r",
 						title=None, text_box=None, site_model_gis_file=None,
-						neutral_site_models=[], fig_filespec=None):
+						neutral_site_models=[], plot_rms_as_alpha=True,
+						plot_epicenter_as="area", fig_filespec=None):
 	layers = []
 
 	lon_grid, lat_grid = grd_source_model.lon_grid, grd_source_model.lat_grid
 	min_mag, max_mag = np.floor(np.nanmin(mag_grid)), np.ceil(np.nanmax(mag_grid))
+	max_mag = 8.5
 	if region is None:
 		region = grd_source_model.grid_outline
 
@@ -638,19 +640,25 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 	color_map_theme.color_map.set_under('w')
 	colorbar_title = "Magnitude"
 	contour_levels = np.arange(min_mag, max_mag + 0.5, 0.5)
-	contour_line_style = lbm.LineStyle(label_style=lbm.TextStyle())
+	contour_line_style = lbm.LineStyle(label_style=lbm.TextStyle(font_size=10))
 	colorbar_style = lbm.ColorbarStyle(colorbar_title, format="%.1f")
-	grid_style = lbm.GridStyle(color_map_theme, color_gradient="continuous",
+	if plot_rms_as_alpha:
+		grid_style = lbm.GridStyle(None, color_gradient=None, line_style=contour_line_style,
+									contour_levels=contour_levels, colorbar_style=None)
+	else:
+		grid_style = lbm.GridStyle(color_map_theme, color_gradient="continuous",
 					line_style=contour_line_style, contour_levels=contour_levels,
 					colorbar_style=colorbar_style)
 	layer = lbm.MapLayer(grid_data, grid_style)
 	layers.append(layer)
 
 	## RMS contours
-	if rms_grid is not None:
+	if rms_grid is not None and not plot_rms_as_alpha:
 		grid_data = lbm.MeshGridData(lon_grid, lat_grid, rms_grid)
 		contour_levels = np.arange(0, 1, 0.1)
-		contour_line_style = lbm.LineStyle(line_pattern='--', label_style=lbm.TextStyle())
+		label_style = lbm.TextStyle(color='w', font_size=8)
+		contour_line_style = lbm.LineStyle(line_pattern='--', line_color='w',
+										line_width=0.75, label_style=label_style)
 		grid_style = lbm.GridStyle(None, color_gradient=None, line_style=contour_line_style,
 									contour_levels=contour_levels, colorbar_style=None)
 		layer = lbm.MapLayer(grid_data, grid_style)
@@ -711,9 +719,31 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 	gis_filename = "LOFZ_breukenmodel.shp"
 	gis_filespec = os.path.join(gis_folder, gis_filename)
 	data = lbm.GisData(gis_filespec)
-	style = lbm.LineStyle(line_color='purple', line_width=2)
+	style = lbm.LineStyle(line_color='purple', line_width=1.25)
 	layer = lbm.MapLayer(data, style, legend_label="Faults")
 	layers.append(layer)
+
+	## Add epicenter
+	if plot_epicenter_as in ("point", "both"):
+		idx = np.unravel_index(rms_grid.argmin(), rms_grid.shape)
+		point_data = lbm.PointData(lon_grid[idx], lat_grid[idx])
+		point_style = lbm.PointStyle(shape='*', fill_color='yellow', size=12)
+		layer = lbm.MapLayer(point_data, point_style)
+		layers.append(layer)
+
+	## or epicentral area
+	if plot_epicenter_as in ("area", "both"):
+		epicentral_grid = (rms_grid <= (np.nanmin(rms_grid) + 0.1)).astype(np.float)
+		grid_data = lbm.MeshGridData(lon_grid, lat_grid, epicentral_grid)
+		#print np.nanmin(rms_grid), np.nanmin(rms_grid) + 0.1, np.nanmax(rms_grid)
+		#print epicentral_grid
+		contour_levels = np.array([0, 1])
+		contour_line_style = lbm.LineStyle(line_pattern='-', line_color='yellow',
+										line_width=2, label_style=None)
+		grid_style = lbm.GridStyle(None, color_gradient=None, line_style=contour_line_style,
+									contour_levels=contour_levels, colorbar_style=None)
+		layer = lbm.MapLayer(grid_data, grid_style)
+		layers.append(layer)
 
 	legend_style = None
 	title = ""
@@ -721,6 +751,22 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 			title_style=lbm.DefaultTitleTextStyle, graticule_style=lbm.GraticuleStyle(),
 			graticule_interval=(1, 0.5), resolution='h',
 			legend_style=legend_style)
+
+	## Alternative plotting of mag_grid, applying rms_grid as alpha values
+	if plot_rms_as_alpha:
+		greys = np.empty(mag_grid.shape + (3,), dtype=np.uint8)
+		greys.fill(255)
+		colors = color_map_theme(mag_grid)
+		if rms_grid is not None:
+			rms_max, rms_min = np.nanmax(rms_grid), np.nanmin(rms_grid)
+			#rms_min = 0
+			rms_max = max(1, rms_max)
+			rms_range = rms_max - rms_min
+			alphas = 1 - (rms_grid - rms_min) / rms_range
+			colors[..., -1] = alphas
+
+		map.map.imshow(greys)
+		map.map.imshow(colors)
 
 	if fig_filespec:
 		map.plot(fig_filespec=fig_filespec, dpi=200)
