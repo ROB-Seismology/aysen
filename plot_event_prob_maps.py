@@ -14,8 +14,8 @@ base_fig_folder = os.path.join(project_folder, "Figures", "Events", "v2", "NE=+1
 
 ## Event names
 events = ['2007', 'SL-A', 'SL-B', 'SL-C', 'SL-CD', 'SL-D', 'SL-DE', 'SL-EF', 'SL-F', 'SL-G']
-events = ["SL-A"]
-#events = events[2:]
+#events = ["SL-A"]
+events = events[:1]
 
 
 ## IPE names
@@ -81,10 +81,19 @@ for event in events:
 		shapefile = os.path.join(gis_folder, "%s.shp" % geom_type)
 		(_pe_thresholds, _pe_site_models,
 		_ne_thresholds, _ne_site_models) = read_evidence_site_info_from_gis(shapefile, event, polygon_discretization)
-		pe_thresholds.extend(_pe_thresholds)
-		pe_site_models.extend(_pe_site_models)
-		ne_thresholds.extend(_ne_thresholds)
-		ne_site_models.extend(_ne_site_models)
+		## Remove "West" polygon (only used for 2007 event)
+		for _pe_threshold, _pe_site_model in zip(_pe_thresholds, _pe_site_models):
+			if _pe_site_model.name[:4] != "West":
+				pe_thresholds.append(_pe_threshold)
+				pe_site_models.append(_pe_site_model)
+		for _ne_threshold, _ne_site_model in zip(_ne_thresholds, _ne_site_models):
+			if _ne_site_model.name[:4] != "West":
+				ne_thresholds.append(_ne_threshold)
+				ne_site_models.append(_ne_site_model)
+		#pe_thresholds.extend(_pe_thresholds)
+		#pe_site_models.extend(_pe_site_models)
+		#ne_thresholds.extend(_ne_thresholds)
+		#ne_site_models.extend(_ne_site_models)
 
 	intensity_correction = 0
 	#if ipe_name == "AllenEtAl2012Rrup":
