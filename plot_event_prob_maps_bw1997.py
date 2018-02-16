@@ -34,7 +34,7 @@ grid_spacing = 0.1
 
 min_mag, max_mag, mag_bin_width = 4.5, 8.5, 0.2
 depth = 10
-strike, dip, rake = 35, 80, 180
+strike, dip, rake = 20, 80, 180
 point_msr = oqhazlib.scalerel.PointMSR()
 wc1994_msr = oqhazlib.scalerel.WC1994()
 
@@ -81,7 +81,7 @@ for event in events:
 	idx = np.unravel_index(rms_grid.argmin(), rms_grid.shape)
 	print mag_grid[idx], lon_grid[idx], lat_grid[idx]
 
-	rms_grid[np.isnan(mag_grid)] = np.inf
+	#rms_grid[np.isnan(mag_grid)] = np.inf
 
 
 	## Plot map
