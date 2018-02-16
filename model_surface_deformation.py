@@ -102,7 +102,7 @@ if __name__ == "__main__":
 
 	## Plot
 	from clawpack.visclaw import colormaps
-	import cmocean
+	#import cmocean
 	import matplotlib
 
 	#output = "displacement"
@@ -153,7 +153,7 @@ if __name__ == "__main__":
 		layers.append(layer)
 
 	elif output == "vector":
-		grid_data1 = lbm.MeshGridData(X, Y, dZ)
+		grid_data1 = lbm.MeshGridData(X, Y, U.E)
 		grid_data2 = lbm.MeshGridData(X, Y, U.N)
 		vector_data = lbm.MeshGridVectorData(grid_data1, grid_data2, unit='m')
 		color_map = colormaps.blue_white_red
@@ -201,13 +201,13 @@ if __name__ == "__main__":
 	text += u"Dip: %d°\n" % flt.dip
 	text += u"Rake: %d°\n" % flt.rake
 	text += "Slip: %s m\n" % '/'.join(["%.2f" % subflt.slip for subflt in elastic_fault.subfaults])
-	text += "Magnitude: %.1f" % elastic_fault.calc_magnitude()
+	text += "Magnitude: %.1f\n" % elastic_fault.calc_magnitude()
 	text += "Displacement: %.2f/%.2f m" % (dZ.min(), dZ.max())
 	map.draw_text_box(pos, text, text_style)
 
-	#fig_filespec = None
+	fig_filespec = None
 	fig_filename = "okada_test_%s_%s.png" % (output, comp_string)
-	fig_filespec = os.path.join(fig_folder, fig_filename)
+	#fig_filespec = os.path.join(fig_folder, fig_filename)
 
 	if fig_filespec:
 		dpi = 200
