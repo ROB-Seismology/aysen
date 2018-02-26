@@ -57,7 +57,7 @@ lt_integration_distance_dict = {"AtkinsonWald2007": (None, 30)}
 
 ## Read site info
 all_site_models = []
-for geom_type in ["Polygons", "Points"]:
+for geom_type in ["Polygons_v2", "Points"]:
 	shapefile = os.path.join(gis_folder, "%s.shp" % geom_type)
 	site_models = read_evidence_sites_from_gis(shapefile, polygon_discretization)
 	for site_model in site_models:
@@ -241,7 +241,7 @@ for scenario in scenarios:
 						#fig_filespec = None
 
 						## Colormaps: RdBu_r, YlOrRd, BuPu, RdYlBu_r, Greys
-						site_model_gis_file = os.path.join(gis_folder, "Polygons.shp")
+						site_model_gis_file = os.path.join(gis_folder, "Polygons_v2.shp")
 						plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
 													map_region, plot_point_ruptures=True, colormap="RdYlBu_r",
 													title=title, text_box=text_box, site_model_gis_file=site_model_gis_file,

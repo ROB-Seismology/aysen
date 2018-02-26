@@ -56,7 +56,7 @@ layers.append(layer)
 
 
 ## Polygon sites
-gis_filespec = os.path.join(gis_folder, 'Polygons.shp')
+gis_filespec = os.path.join(gis_folder, 'Polygons_v2.shp')
 data = lbm.GisData(gis_filespec, label_colname='Name')
 multipoint_data, multiline_data, multipolygon_data = data.get_data()
 site_names, polygons = [], []

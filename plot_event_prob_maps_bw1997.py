@@ -17,7 +17,7 @@ fig_folder = os.path.join(project_folder, "Figures", "Events", "bw1997", "NE=+1.
 
 ## Event names
 events = ['2007', 'SL-A', 'SL-B', 'SL-C', 'SL-CD', 'SL-D', 'SL-DE', 'SL-EF', 'SL-F', 'SL-G']
-#events = ["SL-C"]
+#events = ["2007"]
 #events = events[:1]
 
 ## IPE and IMT
@@ -49,7 +49,7 @@ for event in events:
 	## Read MTD evidence
 	pe_site_models, ne_site_models = [], []
 	pe_thresholds, pe_sites, ne_thresholds, ne_sites = [], [], [], []
-	for geom_type in ["Polygons", "Points"]:
+	for geom_type in ["Polygons_v2", "Points"]:
 		shapefile = os.path.join(gis_folder, "%s.shp" % geom_type)
 		(_pe_thresholds, _pe_site_models,
 		_ne_thresholds, _ne_site_models) = read_evidence_site_info_from_gis(shapefile,
@@ -71,7 +71,7 @@ for event in events:
 	pe_thresholds = np.array(pe_thresholds)
 	ne_thresholds = np.array(ne_thresholds)
 
-	#ne_thresholds -= 0.5
+	#ne_thresholds -= 1.0
 
 	## Compute magnitudes and RMS errors at grid points
 	(mag_grid, rms_grid) = (
@@ -81,17 +81,17 @@ for event in events:
 	idx = np.unravel_index(rms_grid.argmin(), rms_grid.shape)
 	print mag_grid[idx], lon_grid[idx], lat_grid[idx]
 
-	#rms_grid[np.isnan(mag_grid)] = np.inf
+	rms_grid[np.isinf(rms_grid)] = 10.0
 
 
 	## Plot map
 	# TODO: blend alpha in function of rms
 	# See: https://matplotlib.org/devdocs/gallery/images_contours_and_fields/image_transparency_blend.html
-	site_model_gis_file = os.path.join(gis_folder, "Polygons.shp")
+	site_model_gis_file = os.path.join(gis_folder, "Polygons_v2.shp")
 	map = plot_gridsearch_map(grd_src_model, mag_grid, rms_grid,
 							pe_site_models, ne_site_models,
 							site_model_gis_file=site_model_gis_file,
-							plot_rms_as_alpha=False, plot_epicenter_as="both")
+							plot_rms_as_alpha=False, plot_epicenter_as="area")
 
 	fig_filespec = os.path.join(fig_folder, "%s_bw1997.png" % event)
 	#fig_filespec = None
