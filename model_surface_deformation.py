@@ -84,7 +84,7 @@ if __name__ == "__main__":
 	U = elastic_fault.okada(X, Y)
 
 	## Take component
-	#component = 'E'
+	component = 'E'
 	#dZ = getattr(U, component)
 	## Along-strike
 	#azimuth = np.round(elastic_fault.subfaults[0].strike)
@@ -118,6 +118,46 @@ if __name__ == "__main__":
 	layer = lbm.MapLayer(data, style)
 	#layers.append(layer)
 
+	## Wrapped phase
+	grd_file = os.path.join(fig_folder, "filt_topophase.mph.vrt")
+	grid_data = lbm.GdalRasterData(grd_file, band_nr=2)
+
+	## Unwrapped
+	#grd_file = os.path.join(fig_folder, "filt_topophase.unw.geo.tiff")
+	#grid_data = lbm.GdalRasterData(grd_file, band_nr=1)
+
+	grid_data.apply_bbox((map_region[0], map_region[2], map_region[1], map_region[3]))
+	grid_data = grid_data.interpolate_grid(X, Y)
+	#values = grid_data.values
+	#print values.min(), values.max()
+
+	## Wrapped phase
+	#color_map = matplotlib.cm.jet
+	#color_map_theme = lbm.ThematicStyleColormap(color_map=color_map, vmin=0, vmax=2e+6)
+	color_map = matplotlib.cm.hsv
+	color_map_theme = lbm.ThematicStyleColormap(color_map=color_map, vmin=-np.pi, vmax=np.pi)
+	colorbar_title = "Wrapped phase"
+	contour_levels = None
+	#contour_line_style = lbm.LineStyle(label_style=lbm.TextStyle())
+	contour_line_style = None
+
+	## Unwrapped
+	"""
+	color_map = matplotlib.cm.jet
+	color_map_theme = lbm.ThematicStyleColormap(color_map=color_map, vmin=None, vmax=None)
+	colorbar_title = "Unwrapped phase"
+	contour_levels = np.arange(-160, -110, 10)
+	contour_line_style = lbm.LineStyle(label_style=lbm.TextStyle())
+	"""
+
+	colorbar_style = lbm.ColorbarStyle(colorbar_title, format="%.2f")
+	grid_style = lbm.GridStyle(color_map_theme, color_gradient="continuous",
+					line_style=contour_line_style, contour_levels=contour_levels,
+					colorbar_style=colorbar_style)
+	layer = lbm.MapLayer(grid_data, grid_style)
+	layers.append(layer)
+
+
 	## Displacement / Phase
 	if output in ("displacement", "phase"):
 		if output == "displacement":
@@ -150,7 +190,7 @@ if __name__ == "__main__":
 						line_style=contour_line_style, contour_levels=contour_levels,
 						colorbar_style=colorbar_style)
 		layer = lbm.MapLayer(grid_data, grid_style)
-		layers.append(layer)
+		#layers.append(layer)
 
 	elif output == "vector":
 		grid_data1 = lbm.MeshGridData(X, Y, U.E)
