@@ -733,11 +733,19 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 
 	## or epicentral area
 	if plot_epicenter_as in ("area", "both"):
-		epicentral_grid = (rms_grid <= (np.nanmin(rms_grid) + 0.1)).astype(np.float)
-		grid_data = lbm.MeshGridData(lon_grid, lat_grid, epicentral_grid)
-		#print np.nanmin(rms_grid), np.nanmin(rms_grid) + 0.1, np.nanmax(rms_grid)
-		#print epicentral_grid
-		contour_levels = np.array([0, 1])
+		grid_data = lbm.MeshGridData(lon_grid, lat_grid, rms_grid)
+		contour_levels = np.array([np.nanmin(rms_grid), np.nanmin(rms_grid) + 0.15])
+
+		## Hatch fill
+		contour_line_style = lbm.LineStyle(line_pattern='-', line_color="yellow",
+										line_width=1, label_style=None, alpha=0)
+		grid_style = lbm.GridStyle(None, color_gradient=None, line_style=contour_line_style,
+									contour_levels=contour_levels, colorbar_style=None,
+									fill_hatches=['\\'])
+		layer = lbm.MapLayer(grid_data, grid_style)
+		layers.append(layer)
+
+		## Contour line
 		contour_line_style = lbm.LineStyle(line_pattern='-', line_color='yellow',
 										line_width=2, label_style=None)
 		grid_style = lbm.GridStyle(None, color_gradient=None, line_style=contour_line_style,
