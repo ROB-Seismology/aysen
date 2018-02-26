@@ -10,16 +10,18 @@ from create_animated_gif import create_animated_gif
 # TODO: check if negative evidence can be more strict (higher or lower probabilities?): event SL-C
 
 from aysenlib import (project_folder, gis_folder)
-base_fig_folder = os.path.join(project_folder, "Figures", "Events", "v2", "NE=+1.0")
+base_fig_folder = os.path.join(project_folder, "Figures", "Events", "v2", "NE=+0.5")
 
 ## Event names
-events = ['2007', 'SL-A', 'SL-B', 'SL-C', 'SL-CD', 'SL-D', 'SL-DE', 'SL-EF', 'SL-F', 'SL-G']
+#events = ['2007', 'SL-G', 'SL-F', 'SL-EF', 'SL-DE', 'SL-D', 'SL-CD', 'SL-C', 'SL-B', 'SL-A']
+events = ['SL-EF', 'SL-DE', 'SL-A']
 #events = ["SL-A"]
-events = events[:1]
+#events = events[5:]
 
 
 ## IPE names
 #ipe_names = ["LogicTree", "AllenEtAl2012", "AtkinsonWald2007", "BakunWentworth1997WithSigma", "Barrientos1980WithSigma"]
+#ipe_names = ["AtkinsonWald2007"]
 ipe_names = ["BakunWentworth1997WithSigma"]
 
 
@@ -77,19 +79,17 @@ for event in events:
 
 	## Read MTD evidence
 	pe_thresholds, pe_site_models, ne_thresholds, ne_site_models = [], [], [], []
-	for geom_type in ["Polygons", "Points"]:
+	for geom_type in ["Polygons_v2", "Points"]:
 		shapefile = os.path.join(gis_folder, "%s.shp" % geom_type)
 		(_pe_thresholds, _pe_site_models,
 		_ne_thresholds, _ne_site_models) = read_evidence_site_info_from_gis(shapefile, event, polygon_discretization)
 		## Remove "West" polygon (only used for 2007 event)
 		for _pe_threshold, _pe_site_model in zip(_pe_thresholds, _pe_site_models):
-			if _pe_site_model.name[:4] != "West":
-				pe_thresholds.append(_pe_threshold)
-				pe_site_models.append(_pe_site_model)
+			pe_thresholds.append(_pe_threshold)
+			pe_site_models.append(_pe_site_model)
 		for _ne_threshold, _ne_site_model in zip(_ne_thresholds, _ne_site_models):
-			if _ne_site_model.name[:4] != "West":
-				ne_thresholds.append(_ne_threshold)
-				ne_site_models.append(_ne_site_model)
+			ne_thresholds.append(_ne_threshold)
+			ne_site_models.append(_ne_site_model)
 		#pe_thresholds.extend(_pe_thresholds)
 		#pe_site_models.extend(_pe_site_models)
 		#ne_thresholds.extend(_ne_thresholds)
@@ -103,7 +103,7 @@ for event in events:
 	pe_thresholds = np.array(pe_thresholds) + intensity_correction
 	ne_thresholds = np.array(ne_thresholds) + intensity_correction
 
-	#ne_thresholds -= 1.0
+	ne_thresholds -= 0.5
 
 	for pe_site_model, pe_threshold in zip(pe_site_models, pe_thresholds):
 		print("+%s (n=%d): %s" % (pe_site_model.name.encode(errors='replace'), len(pe_site_model), pe_threshold))
@@ -162,7 +162,7 @@ for event in events:
 		#fig_filespec = None
 
 		## Colormaps: RdBu_r, YlOrRd, BuPu, RdYlBu_r, Greys
-		site_model_gis_file = os.path.join(gis_folder, "Polygons.shp")
+		site_model_gis_file = os.path.join(gis_folder, "Polygons_v2.shp")
 		plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
 									map_region, plot_point_ruptures=True, colormap="RdYlBu_r",
 									title=title, text_box=text_box, site_model_gis_file=site_model_gis_file,
@@ -190,7 +190,8 @@ for event in events:
 			print("  %s: %.2f, %.2f" % (sections[idx], mean_probs[idx], max_probs[idx]))
 
 
-## Plot max_prob vs magnitude for different IPEs
+## Plot max_prob vs magnitude for different IPEs per event
+"""
 colors = ['r', 'b', 'g', 'm', 'k']
 for event in events:
 	pylab.cla()
@@ -209,6 +210,33 @@ for event in events:
 
 	fig_folder = os.path.join(base_fig_folder, event)
 	fig_filename = "%s_M_vs_prob.%s" % (event, output_format)
+	fig_filespec = os.path.join(fig_folder, fig_filename)
+	#fig_filespec = None
+	if fig_filespec:
+		pylab.savefig(fig_filespec, dpi=200)
+	else:
+		pylab.show()
+"""
+
+## Plot max_prob vs magnitude for different events in one plot
+colors = ['r', 'b', 'g', 'm', 'k']
+pylab.cla()
+for event, color in zip(events, colors):
+	label = event
+	ipe_name = ipe_names[0]
+	if "WithSigma" in ipe_name:
+		ipe_label = ipe_name[:ipe_name.find("WithSigma")]
+	else:
+		ipe_label = ipe_name
+	pylab.plot(fault_mags, max_prob_dict[event][ipe_name], 'x-', color=color, label=label)
+	pylab.xlim(fault_mags[0], fault_mags[-1])
+	pylab.ylim(0, 1)
+	pylab.xlabel("Magnitude")
+	pylab.ylabel("Max. normalized probability")
+	pylab.legend(loc=8)
+
+	fig_folder = os.path.join(base_fig_folder)
+	fig_filename = "events5-10_M_vs_prob_%s.%s" % (ipe_label, output_format)
 	fig_filespec = os.path.join(fig_folder, fig_filename)
 	#fig_filespec = None
 	if fig_filespec:
