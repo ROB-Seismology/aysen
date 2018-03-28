@@ -7,16 +7,16 @@ from aysenlib import *
 from create_animated_gif import create_animated_gif
 
 
-# TODO: check if negative evidence can be more strict (higher or lower probabilities?): event SL-C
 
 from aysenlib import (project_folder, gis_folder)
 base_fig_folder = os.path.join(project_folder, "Figures", "Events", "v2", "NE=+0.5")
 
 ## Event names
-#events = ['2007', 'SL-G', 'SL-F', 'SL-EF', 'SL-DE', 'SL-D', 'SL-CD', 'SL-C', 'SL-B', 'SL-A']
-events = ['SL-EF', 'SL-DE', 'SL-A']
+events = ['2007', 'SL-G', 'SL-F', 'SL-EF', 'SL-DE', 'SL-D', 'SL-CD', 'SL-C', 'SL-B', 'SL-A']
+#events = ['SL-A']
+#events = ['SL-EF', 'SL-DE', 'SL-A']
 #events = ["SL-A"]
-#events = events[5:]
+#events = events[:6]
 
 
 ## IPE names
@@ -38,7 +38,7 @@ strict_intersection = True
 
 ## Map parameters
 #map_region = (-74, -72, -46, -44.5)
-map_region = (-74, -72, -46.25, -44.75)
+map_region = (-74, -72, -46.25, -44.8)
 output_format = "png"
 
 
@@ -57,7 +57,7 @@ for M in fault_mags:
 """
 
 ## Discretize faults as network
-fault_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel3.TAB")
+fault_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel4.TAB")
 dM = 0.2
 fault_mags, fault_networks = [], []
 for M, source_model in read_fault_source_model_as_network(fault_filespec, dM=dM):
@@ -79,7 +79,7 @@ for event in events:
 
 	## Read MTD evidence
 	pe_thresholds, pe_site_models, ne_thresholds, ne_site_models = [], [], [], []
-	for geom_type in ["Polygons_v2", "Points"]:
+	for geom_type in ["Polygons_v3", "Points"]:
 		shapefile = os.path.join(gis_folder, "%s.shp" % geom_type)
 		(_pe_thresholds, _pe_site_models,
 		_ne_thresholds, _ne_site_models) = read_evidence_site_info_from_gis(shapefile, event, polygon_discretization)
@@ -151,8 +151,9 @@ for event in events:
 		else:
 			ipe_label = ipe_name
 
-		text_box = "Event: %s\nIPE: %s\nM: %.2f, Pmax: %.2f"
-		text_box %= (event, ipe_label, M, max_prob)
+		#text_box = "Event: %s\nIPE: %s\nM: %.2f, Pmax: %.2f"
+		text_box = "Event: %s\nM: %.2f\nPmax: %.2f"
+		text_box %= (event, M, max_prob)
 
 		#title = "Event: %s, IPE: %s, M=%.2f" % (event, ipe_name, M)
 		title = ""
@@ -162,7 +163,7 @@ for event in events:
 		#fig_filespec = None
 
 		## Colormaps: RdBu_r, YlOrRd, BuPu, RdYlBu_r, Greys
-		site_model_gis_file = os.path.join(gis_folder, "Polygons_v2.shp")
+		site_model_gis_file = os.path.join(gis_folder, "Polygons_v3.shp")
 		plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
 									map_region, plot_point_ruptures=True, colormap="RdYlBu_r",
 									title=title, text_box=text_box, site_model_gis_file=site_model_gis_file,
@@ -173,6 +174,7 @@ for event in events:
 	for ipe_name in ipe_names:
 		img_basename = "%s_%s" % (event, ipe_label)
 		create_animated_gif(fig_folder, img_basename)
+
 
 
 ## Determine which sections have highest probability
@@ -190,8 +192,8 @@ for event in events:
 			print("  %s: %.2f, %.2f" % (sections[idx], mean_probs[idx], max_probs[idx]))
 
 
+
 ## Plot max_prob vs magnitude for different IPEs per event
-"""
 colors = ['r', 'b', 'g', 'm', 'k']
 for event in events:
 	pylab.cla()
@@ -216,10 +218,11 @@ for event in events:
 		pylab.savefig(fig_filespec, dpi=200)
 	else:
 		pylab.show()
-"""
+
 
 ## Plot max_prob vs magnitude for different events in one plot
-colors = ['r', 'b', 'g', 'm', 'k']
+
+colors = ['r', 'b', 'g', 'm', 'c', 'k']
 pylab.cla()
 for event, color in zip(events, colors):
 	label = event
@@ -233,10 +236,10 @@ for event, color in zip(events, colors):
 	pylab.ylim(0, 1)
 	pylab.xlabel("Magnitude")
 	pylab.ylabel("Max. normalized probability")
-	pylab.legend(loc=8)
+	pylab.legend(loc=4)
 
 	fig_folder = os.path.join(base_fig_folder)
-	fig_filename = "events5-10_M_vs_prob_%s.%s" % (ipe_label, output_format)
+	fig_filename = "events1-6_M_vs_prob_%s.%s" % (ipe_label, output_format)
 	fig_filespec = os.path.join(fig_folder, fig_filename)
 	#fig_filespec = None
 	if fig_filespec:

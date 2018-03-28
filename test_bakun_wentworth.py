@@ -12,7 +12,7 @@ from aysenlib import (create_uniform_grid_source_model, create_point_source,
 
 
 ## Construct grid source model
-lonmin, lonmax, latmin, latmax = (4.0, 6.0, 49.0, 51.0)
+lonmin, lonmax, latmin, latmax = (4.0, 7.0, 49.0, 51.0)
 grid_outline = (lonmin, lonmax, latmin, latmax)
 grid_spacing = 0.1
 
@@ -38,32 +38,53 @@ ipe_name = "BakunWentworth1997"
 imt = oqhazlib.imt.MMI()
 
 ## Draw random observation locations
-num_obs = 10
+num_obs = 20
 lon_obs = np.random.choice(grd_src_model.lons, num_obs)
 lat_obs = np.random.choice(grd_src_model.lats, num_obs)
 
 ## Compute intensities at observation locations for given epicenter and magnitude
-mag, lon, lat = 5.7, 5.0, 49.5
+mag, lon, lat = 7.2, 5.0, 49.5
 epicenter = grd_src_model.create_point_source(lon, lat)
 epicenter.mfd.min_mag = mag
 epicenter.mfd.modify_set_occurrence_rates([1])
 tom = oqhazlib.tom.PoissonTOM(1)
 [rupture] = epicenter.iter_ruptures(tom)
-pe_sites = [rshalib.site.SoilSite(lon_obs[i], lat_obs[i]) for i in range(num_obs)]
-pe_site_model = rshalib.site.SoilSiteModel("Positive evidence", pe_sites)
+
+all_sites = [rshalib.site.SoilSite(lon_obs[i], lat_obs[i]) for i in range(num_obs)]
+site_model = rshalib.site.SoilSiteModel("All sites", all_sites)
 ipe = oqhazlib.gsim.get_available_gsims()[ipe_name]()
-sctx, rctx, dctx = ipe.make_contexts(pe_site_model, rupture)
-pe_intensities, _ = ipe.get_mean_and_stddevs(sctx, rctx, dctx, imt, [oqhazlib.const.StdDev.TOTAL])
+sctx, rctx, dctx = ipe.make_contexts(site_model, rupture)
+site_intensities, _ = ipe.get_mean_and_stddevs(sctx, rctx, dctx, imt, [oqhazlib.const.StdDev.TOTAL])
 
 for i in range(num_obs):
-	print lon_obs[i], lat_obs[i], pe_intensities[i]
+	print lon_obs[i], lat_obs[i], site_intensities[i]
 
-## Add negative evidence
+## Categorize sites as positive or negative evidence
+"""
+threshold_mmi = 5.5
+pe_sites, ne_sites = [], []
+#pe_intensities, ne_intensities = [], []
+for s, site in enumerate(all_sites):
+	if site_intensities[s] >= threshold_mmi:
+		pe_sites.append(site)
+	else:
+		ne_sites.append(site)
+pe_site_model = rshalib.site.SoilSiteModel("Positive evidence", pe_sites)
+ne_site_model = rshalib.site.SoilSiteModel("Negative evidence", ne_sites)
+pe_intensities = [threshold] * len(pe_sites)
+ne_intensities = [threshold] * len(ne_sites)
+print len(pe_sites), len(ne_sites)
+"""
+
+
+## Use all intensities as positive evidence and add arbitrary negative evidence
+pe_site_model, pe_sites, pe_intensities = site_model, all_sites, site_intensities
 #lon_obs_neg, lat_obs_neg, ne_intensities = [], [], []
 lon_obs_neg, lat_obs_neg, ne_intensities = [5.], [50.5], [5]
 num_obs = len(ne_intensities)
 ne_sites = [rshalib.site.SoilSite(lon_obs_neg[i], lat_obs_neg[i]) for i in range(num_obs)]
 ne_site_model = rshalib.site.SoilSiteModel("Negative evidence", ne_sites)
+
 
 ## Grid search
 lon_grid, lat_grid = grd_src_model.lon_grid, grd_src_model.lat_grid
@@ -78,5 +99,5 @@ print mag_grid[idx], lon_grid[idx], lat_grid[idx]
 
 map = plot_gridsearch_map(grd_src_model, mag_grid, rms_grid,
 						[pe_site_model], [ne_site_model], colormap="RdYlGn_r",
-						plot_rms_as_alpha=False, plot_epicenter_as="both")
+						plot_rms_as_alpha=False, plot_epicenter_as="area")
 map.plot()

@@ -104,7 +104,7 @@ for gmpe_name in ["AllenEtAl2012", "AtkinsonWald2007", "BakunWentworth1997", "Ba
 					lat, lon = float(lat), float(lon)
 					mmi = {"20070421": mmi1, "20070402": mmi2}[event_ID]
 					try:
-						mmi = int(mmi)
+						mmi = float(mmi)
 					except:
 						pass
 					else:

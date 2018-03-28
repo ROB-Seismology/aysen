@@ -12,11 +12,12 @@ from aysenlib import (create_uniform_grid_source_model, plot_gridsearch_map,
 						TRT, USD, LSD, RAR, RMS, project_folder, gis_folder)
 
 
-fig_folder = os.path.join(project_folder, "Figures", "Events", "bw1997", "NE=+1.0")
+fig_folder = os.path.join(project_folder, "Figures", "Events", "bw1997", "NE=+0.5")
 
 
 ## Event names
 events = ['2007', 'SL-A', 'SL-B', 'SL-C', 'SL-CD', 'SL-D', 'SL-DE', 'SL-EF', 'SL-F', 'SL-G']
+#events = ['SL-A']
 #events = ["2007"]
 #events = events[:1]
 
@@ -29,7 +30,7 @@ polygon_discretization = 2.5
 
 
 ## Construct grid source model
-grid_outline = (-74, -72, -46.25, -44.75)
+grid_outline = (-74, -72, -46.25, -44.8)
 grid_spacing = 0.1
 
 min_mag, max_mag, mag_bin_width = 4.5, 8.5, 0.2
@@ -49,7 +50,7 @@ for event in events:
 	## Read MTD evidence
 	pe_site_models, ne_site_models = [], []
 	pe_thresholds, pe_sites, ne_thresholds, ne_sites = [], [], [], []
-	for geom_type in ["Polygons_v2", "Points"]:
+	for geom_type in ["Polygons_v3", "Points"]:
 		shapefile = os.path.join(gis_folder, "%s.shp" % geom_type)
 		(_pe_thresholds, _pe_site_models,
 		_ne_thresholds, _ne_site_models) = read_evidence_site_info_from_gis(shapefile,
@@ -71,7 +72,7 @@ for event in events:
 	pe_thresholds = np.array(pe_thresholds)
 	ne_thresholds = np.array(ne_thresholds)
 
-	#ne_thresholds -= 1.0
+	ne_thresholds -= 0.5
 
 	## Compute magnitudes and RMS errors at grid points
 	(mag_grid, rms_grid) = (
@@ -87,10 +88,14 @@ for event in events:
 	## Plot map
 	# TODO: blend alpha in function of rms
 	# See: https://matplotlib.org/devdocs/gallery/images_contours_and_fields/image_transparency_blend.html
-	site_model_gis_file = os.path.join(gis_folder, "Polygons_v2.shp")
+	text_box = "Event: %s\nRMSE: %.2f - %.2f"
+	text_box %= (event, rms_grid.min(), rms_grid[rms_grid < 10].max())
+
+	site_model_gis_file = os.path.join(gis_folder, "Polygons_v3.shp")
 	map = plot_gridsearch_map(grd_src_model, mag_grid, rms_grid,
 							pe_site_models, ne_site_models,
 							site_model_gis_file=site_model_gis_file,
+							text_box=text_box,
 							plot_rms_as_alpha=False, plot_epicenter_as="area")
 
 	fig_filespec = os.path.join(fig_folder, "%s_bw1997.png" % event)

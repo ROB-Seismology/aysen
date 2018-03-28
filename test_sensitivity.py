@@ -10,9 +10,10 @@ from aysenlib import (project_folder, gis_folder, read_evidence_sites_from_gis,
 						read_fault_source_model, read_fault_source_model_as_floating_ruptures,
 						read_fault_source_model_as_network, get_roman_intensity,
 						plot_rupture_probabilities, TRT, MSR)
+from create_animated_gif import create_animated_gif
 
 
-fig_folder = os.path.join(project_folder, "Figures", "Sensitivity", "v4")
+fig_folder = os.path.join(project_folder, "Figures", "Sensitivity", "v5", "Scenarios")
 
 
 ## Scenarios
@@ -41,14 +42,17 @@ strict_intersection = True
 
 ## Map parameters
 #map_region = (-74, -72, -46, -44.5)
-map_region = (-74, -72, -46.25, -44.75)
+map_region = (-74, -72, -46.25, -44.8)
 output_format = "png"
 
 
 ## IPE Logic tree
-models = ["Barrientos1980WithSigma", "BakunWentworth1997WithSigma", "AllenEtAl2012", "AtkinsonWald2007"]
-weights = [0.32, 0.26, 0.25, 0.17]
-lt_gmpe_system_def = {TRT: rshalib.pmf.GMPEPMF(models, weights)}
+#models = ["Barrientos1980WithSigma", "BakunWentworth1997WithSigma", "AllenEtAl2012", "AtkinsonWald2007"]
+#weights = [0.32, 0.26, 0.25, 0.17]
+ipe_models = ["Barrientos1980WithSigma", "BakunWentworth1997WithSigma", "AllenEtAl2012"]
+weights = [0.34, 0.33, 0.33]
+
+lt_gmpe_system_def = {TRT: rshalib.pmf.GMPEPMF(ipe_models, weights)}
 lt_integration_distance_dict = {"AtkinsonWald2007": (None, 30)}
 #TODO: apply distance filtering for BakunWentworth1997WithSigma when M larger than
 #threshold causing too high values in near field (to be determined)
@@ -57,7 +61,7 @@ lt_integration_distance_dict = {"AtkinsonWald2007": (None, 30)}
 
 ## Read site info
 all_site_models = []
-for geom_type in ["Polygons_v2", "Points"]:
+for geom_type in ["Polygons_v3", "Points"]:
 	shapefile = os.path.join(gis_folder, "%s.shp" % geom_type)
 	site_models = read_evidence_sites_from_gis(shapefile, polygon_discretization)
 	for site_model in site_models:
@@ -67,8 +71,10 @@ for geom_type in ["Polygons_v2", "Points"]:
 print len(all_site_models)
 
 
-scenarios = ["Quitralco", "Azul Tigre South", "2007", "Due East", "Due West"]
-scenarios = ["Quitralco"]
+#scenarios = ["Quitralco", "Azul Tigre South", "2007", "Due East", "Due West"]
+#scenarios = ["Azul Tigre South", "Quitralco East", "Due East"]
+scenarios = ["Azul Tigre South", "Quitralco East", "Rio Manihuales", "Quitralco West"]
+#scenarios = ["LOFZ South"]
 for scenario in scenarios:
 	## Read rupture scenario
 	scenario_filespec = os.path.join(gis_folder, 'LOFZ_rupture_scenarios.TAB')
@@ -91,11 +97,10 @@ for scenario in scenarios:
 	#delta_threshold = 0.5
 	delta_threshold = 0.
 
-	thresholds = [5.5, 6.5, 7.5]
-	threshold_sets = [[t] for t in thresholds] + [thresholds]
-	threshold_sets = [[9]]
-	#for threshold_set in [6, 7, 8]:
-	#for threshold_set in [6, 7, 8, (6, 7, 8)]:
+	#thresholds = [7.5, 6.5, 5.5]
+	#threshold_sets = [[t] for t in thresholds] + [thresholds]
+	#threshold_sets = [[9]]
+	threshold_sets = [[7.5]]
 	for threshold_set in threshold_sets:
 		## Construct ground-motion model
 		#ipe_name = "BakunWentworth1997WithSigma"
@@ -103,8 +108,10 @@ for scenario in scenarios:
 		#ipe_name = "AllenEtAl2012"
 		#ipe_name = "LogicTree"
 
-		ipe_names = ["LogicTree", "AllenEtAl2012", "AtkinsonWald2007", "BakunWentworth1997WithSigma", "Barrientos1980WithSigma"]
-		ipe_names = ipe_names[3:4]
+		#ipe_names = ["LogicTree", "AllenEtAl2012", "AtkinsonWald2007", "BakunWentworth1997WithSigma", "Barrientos1980WithSigma"]
+		#ipe_names = ["LogicTree"] + ipe_models
+		ipe_names = ipe_models[:1]
+		#ipe_names = ipe_names[3:4]
 		max_probs, section_probs, scenario_probs = {}, {}, {}
 		for ipe_name in ipe_names:
 			if ipe_name != "LogicTree":
@@ -139,8 +146,8 @@ for scenario in scenarios:
 
 			print("Positive: n=%d; Negative: n=%d" %(len(pe_site_models), len(ne_site_models)))
 
-			#if not 0 in (len(pe_site_models), len(ne_site_models)):
-			if True:
+			if ipe_name == "BakunWentworth1997WithSigma" or not 0 in (len(pe_site_models), len(ne_site_models)):
+			#if True:
 				## Compute probability for this scenario and threshold
 				prob_dict = calc_rupture_probability_from_ground_motion_thresholds(
 									scenario_src_model, lt_gmpe_system_def, imt, pe_site_models,
@@ -183,7 +190,7 @@ for scenario in scenarios:
 				## Discretzie faults as network
 				dM = 0.2
 				Mrange = []
-				fault_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel3.TAB")
+				fault_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel4.TAB")
 				for M, source_model in read_fault_source_model_as_network(fault_filespec, dM=dM):
 					## 6.2, 6.8 and 7.2 crash with logictree!
 					#if M <= 7.1:
@@ -221,10 +228,13 @@ for scenario in scenarios:
 
 
 					## Plot map
-					if ipe_name in ("LogicTree", "BakunWentworth1997WithSigma"):
+					#if ipe_name in ("LogicTree", "BakunWentworth1997WithSigma", "AllenEtAl2012"):
 					#if ipe_name in ("AllenEtAl2012", "AtkinsonWald2007"):
+					if True:
 						if "WithSigma" in ipe_name:
 							ipe_label = ipe_name[:ipe_name.find("WithSigma")]
+						elif ipe_name == "LogicTree":
+							ipe_label = "Mix"
 						else:
 							ipe_label = ipe_name
 						text_box = "Scenario: %s\nThreshold MMI: %s\nIPE: %s\nM: %.2f, Pmax: %.2f"
@@ -241,15 +251,21 @@ for scenario in scenarios:
 						#fig_filespec = None
 
 						## Colormaps: RdBu_r, YlOrRd, BuPu, RdYlBu_r, Greys
-						site_model_gis_file = os.path.join(gis_folder, "Polygons_v2.shp")
+						site_model_gis_file = os.path.join(gis_folder, "Polygons_v3.shp")
 						plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
 													map_region, plot_point_ruptures=True, colormap="RdYlBu_r",
 													title=title, text_box=text_box, site_model_gis_file=site_model_gis_file,
 													fig_filespec=fig_filespec)
 
+				## Generate animated GIF
+				img_basename = "%s_MMI=%s_%s" % (scenario, intensity, ipe_name)
+				try:
+					create_animated_gif(fig_folder, img_basename)
+				except:
+					pass
+
 
 		## Plot max_prob vs magnitude
-		"""
 		if section_probs:
 			colors = ['r', 'b', 'g', 'm', 'k']
 			for ipe_name, color in zip(ipe_names, colors):
@@ -257,11 +273,14 @@ for scenario in scenarios:
 				#pylab.plot(Mrange, max_probs, 'kx--', label='Max. probability')
 				if "WithSigma" in ipe_name:
 					label = ipe_name[:ipe_name.find("WithSigma")]
+				elif ipe_name == "LogicTree":
+					label = "IPE Mix"
 				else:
 					label = ipe_name
-				pylab.plot(Mrange, max_probs[ipe_name], 'x-', color=color, label=label)
-				pylab.plot(Mrange, section_probs[ipe_name], 'x--', color=color, label='_nolegend_')
-				pylab.hlines(scenario_probs[ipe_name], Mrange[0], Mrange[-1], colors=color, linestyles="dotted")
+				if ipe_name in max_probs:
+					pylab.plot(Mrange, max_probs[ipe_name], 'x-', color=color, label=label)
+					pylab.plot(Mrange, section_probs[ipe_name], 'x--', color=color, label='_nolegend_')
+					#pylab.hlines(scenario_probs[ipe_name], Mrange[0], Mrange[-1], colors=color, linestyles="dotted")
 			pylab.vlines(scenflt.mfd.min_mag, 0, 1, linestyles="dotted")
 			pylab.xlim(Mrange[0], Mrange[-1])
 			pylab.ylim(0, 1)
@@ -281,4 +300,4 @@ for scenario in scenarios:
 				pylab.savefig(fig_filespec, dpi=200)
 			else:
 				pylab.show()
-		"""
+

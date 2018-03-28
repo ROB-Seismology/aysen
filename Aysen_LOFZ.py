@@ -12,8 +12,8 @@ fig_folder = os.path.join(project_folder, "Figures")
 
 
 ## Event to plot
-#event_ID = "20070421"
-event_ID = "20070402"
+event_ID = "20070421"
+#event_ID = "20070402"
 
 
 if __name__ == "__main__":
@@ -24,7 +24,7 @@ if __name__ == "__main__":
 	import mapping.layeredbasemap as lbm
 	from mapping.layeredbasemap.cm.norm import PiecewiseLinearNorm, LinearNorm
 	import eqcatalog
-	from aysenlib import roman_intensity_dict
+	from aysenlib import get_roman_intensity
 
 
 	## Common parameters
@@ -96,7 +96,7 @@ if __name__ == "__main__":
 				lat, lon = float(lat), float(lon)
 				mmi = {"20070421": mmi1, "20070402": mmi2}[event_ID]
 				try:
-					mmi = int(mmi)
+					mmi = float(mmi)
 				except:
 					pass
 				else:
@@ -107,7 +107,7 @@ if __name__ == "__main__":
 
 	# Define GMPEs or IPEs
 	gmpe_names = ["AllenEtAl2012", "AtkinsonWald2007", "Barrientos1980", "BakunWentworth1997"]
-	gmpe_names = ["BakunWentworth1997"]
+	#gmpe_names = ["BakunWentworth1997"]
 	for gmpe_name in gmpe_names:
 		gmpe_system_def = {}
 		gmpe_pmf = rshalib.pmf.GMPEPMF([gmpe_name], [1])
@@ -135,10 +135,13 @@ if __name__ == "__main__":
 			breakpoints = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 			norm = PiecewiseLinearNorm(breakpoints)
 			#norm = LinearNorm(vmin=0, vmax=12)
-			title = "%s, Mw=%s, %s" % (date, MW, gmpe_name)
+			#title = "%s, Mw=%s, %s" % (date, MW, gmpe_name)
+			title = ""
 			hm = uhs_field.getHazardMap(period_spec=T)
 			#map zonder kleuren
 			#hm.export_GeoTiff("raster.tiff", num_cells = 100)
+			colorbar_style = lbm.ColorbarStyle(format="%.1f", title="MMI", ticks=range(3, 10, 1))
+			#colorbar_style = None
 			#site_style = lbm.PointStyle(shape=".", line_color="k", size=0.5)
 			site_style = None
 			coastline_style = countries_style = lbm.LineStyle(line_width=0.75, line_color="dimgrey")
@@ -147,11 +150,13 @@ if __name__ == "__main__":
 							contour_interval=contour_interval, num_grid_cells=None,
 							title=title, projection="merc", site_style=site_style,
 							coastline_style=coastline_style, countries_style=countries_style,
-							source_model=pt_src_model, resolution="h", show_legend=show_legend)
-			#, contour_format="%.1f", colorbar_interval=1, gridlabel_format="%.1f"
+							source_model=pt_src_model, resolution="h",
+							colorbar_style=colorbar_style, show_legend=show_legend)
+
 
 			## Add topographic hillshading
-			layer = map.get_layer_by_name("intensity_grid")
+			idx = map.get_named_layer_index("intensity_grid")
+			layer = map.layers[idx]
 			#elevation_grid = lbm.GdalRasterData(r"D:\GIS-data\DEM\Etopo2.bin", region=map.region)
 			elevation_grid = lbm.WCSData("http://seishaz.oma.be:8080/geoserver/wcs", "ngdc:etopo1_bedrock", region=map.region)
 			blend_mode = "soft"
@@ -162,29 +167,36 @@ if __name__ == "__main__":
 
 			## Add faults
 			#gis_filespec = r"C:\Users\Katleen\OneDrive\UGent\2de Master\Thesis\Global Mapper\coastline.kml"
-			gis_filename = "LOFZ_breukenmodel.shp"
+			gis_filename = "LOFZ_breukenmodel4.TAB"
 			gis_filespec = os.path.join(gis_folder, gis_filename)
 			data = lbm.GisData(gis_filespec)
 			style = lbm.LineStyle(line_color='purple', line_width=2)
 			layer = lbm.MapLayer(data, style, legend_label="Faults")
-			map.layers.append(layer)
+			map.layers.insert(idx+1, layer)
 
 			## Plot sites with observed intensities
 			lons = [site.lon for site in observation_sites]
 			lats = [site.lat for site in observation_sites]
-			labels = ["%s (%s)" % (site.name, roman_intensity_dict[mmi]) for (site, mmi) in zip(observation_sites, observed_intensities)]
+			labels = ["%s (%s)" % (site.name, get_roman_intensity(mmi)) for (site, mmi) in zip(observation_sites, observed_intensities)]
 			data = lbm.MultiPointData(lons, lats, labels=labels)
 			label_style = lbm.TextStyle(font_size=10, horizontal_alignment="left", offset=(8,0))
 			style = lbm.PointStyle(shape='s', size=7, fill_color='k', label_style=label_style)
 			layer = lbm.MapLayer(data, style, legend_label="Intensity observations")
-			map.layers.append(layer)
+			map.layers.insert(idx+2, layer)
+
+			## Text box
+			pos = (0.965, 0.965)
+			text = "%s IPE" % gmpe_name
+			text_style = lbm.TextStyle(font_size=12, horizontal_alignment='right',
+								vertical_alignment='top', multi_alignment='center',
+								background_color='white', border_pad=0.4, border_color='k')
+			map.draw_text_box(pos, text, text_style)
 
 			#print map.map.proj4string
 			#print map.get_srs().ExportToWkt()
 
 			# colorbar aanpassen, niet weergeven = None
-			#for layer in map.layers:
-			#    if isinstance(layer.data, lbm.GridData):
+			#layer = map.get_layer_by_name("intensity_grid")
 			#	layer.style.color_map_theme.colorbar_style = None
 
 
@@ -195,7 +207,7 @@ if __name__ == "__main__":
 
 			fig_filename = "%s_%s.PNG" % (event_ID, gmpe_name)
 			fig_filespec = os.path.join(fig_folder, fig_filename)
-			fig_filespec = r"C:\Temp\Aysen_test.png"
+			#fig_filespec = r"C:\Temp\Aysen_test.png"
 			#fig_filespec = None
 			#map.export_geotiff(out_filespec=out_filespec)
 			map.plot(fig_filespec=fig_filespec, dpi=200)

@@ -602,16 +602,22 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 		layers.append(layer)
 
 
-	scalebar_style = lbm.ScalebarStyle((-72.25, -44.85), 25, yoffset=2000)
+	scalebar_style = lbm.ScalebarStyle((-72.25, -44.9), 25, font_size=12, yoffset=2000)
 	map = lbm.LayeredBasemap(layers, title, "merc", region=region,
 							graticule_interval=(1, 0.5), resolution='h',
 							scalebar_style=scalebar_style)
 
 	## Add text box
 	if text_box:
-		pylab.text(0.965, 0.035, text_box, fontsize=10, ha='right', va='bottom',
-				bbox={'facecolor':'white', 'alpha':1, 'pad':5},
-				multialignment="left", transform=map.ax.transAxes, zorder=1000)
+		pos = (0.965, 0.035)
+		if max([len(s) for s in text_box.split('\n')]) > 15:
+			font_size = 12
+		else:
+			font_size = 14
+		text_style = lbm.TextStyle(font_size=font_size, horizontal_alignment='right',
+							vertical_alignment='bottom', multi_alignment='left',
+							background_color='w', border_color='k', border_pad=0.5)
+		map.draw_text_box(pos, text_box, text_style)
 
 	if fig_filespec:
 		dpi = 200
@@ -656,7 +662,7 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 	if rms_grid is not None and not plot_rms_as_alpha:
 		grid_data = lbm.MeshGridData(lon_grid, lat_grid, rms_grid)
 		contour_levels = np.arange(0, 1, 0.1)
-		label_style = lbm.TextStyle(color='w', font_size=8)
+		label_style = lbm.TextStyle(color='w', font_size=10)
 		contour_line_style = lbm.LineStyle(line_pattern='--', line_color='w',
 										line_width=0.75, label_style=label_style)
 		grid_style = lbm.GridStyle(None, color_gradient=None, line_style=contour_line_style,
@@ -711,15 +717,15 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 
 	## Coastlines
 	data = lbm.BuiltinData("coastlines")
-	style = lbm.LineStyle()
+	style = lbm.LineStyle(line_color='k')
 	layer = lbm.MapLayer(data, style)
 	layers.append(layer)
 
 	## Add faults
-	gis_filename = "LOFZ_breukenmodel.shp"
+	gis_filename = "LOFZ_breukenmodel4.TAB"
 	gis_filespec = os.path.join(gis_folder, gis_filename)
 	data = lbm.GisData(gis_filespec)
-	style = lbm.LineStyle(line_color='purple', line_width=1.25)
+	style = lbm.LineStyle(line_color='darkslateblue', line_width=1.25)
 	layer = lbm.MapLayer(data, style, legend_label="Faults")
 	layers.append(layer)
 
@@ -727,26 +733,48 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 	if plot_epicenter_as in ("point", "both"):
 		idx = np.unravel_index(rms_grid.argmin(), rms_grid.shape)
 		point_data = lbm.PointData(lon_grid[idx], lat_grid[idx])
-		point_style = lbm.PointStyle(shape='*', fill_color='yellow', size=12)
+		point_style = lbm.PointStyle(shape='*', fill_color='c', size=12)
 		layer = lbm.MapLayer(point_data, point_style)
 		layers.append(layer)
 
 	## or epicentral area
 	if plot_epicenter_as in ("area", "both"):
+		RMS_ZERO = False
+		if np.allclose(np.nanmax(rms_grid[rms_grid < 10]), 0):
+			rms_grid[rms_grid < 10] = 0
+			RMS_ZERO = True
 		grid_data = lbm.MeshGridData(lon_grid, lat_grid, rms_grid)
 		contour_levels = np.array([np.nanmin(rms_grid), np.nanmin(rms_grid) + 0.15])
 
 		## Hatch fill
-		contour_line_style = lbm.LineStyle(line_pattern='-', line_color="yellow",
+		#[contour_line] = grid_data.extract_contour_lines([np.nanmin(rms_grid) + 0.15])
+		#contour_line = lbm.MultiPolygonData(contour_line.lons, contour_line.lats,
+		#									values=contour_line.values)
+		[contour_mpg] = grid_data.extract_contour_intervals(contour_levels)
+		if RMS_ZERO:
+			## Hack: if all RMS are zero, outer polygon should correspond to map frame
+			lon0, lon1 = lon_grid.min(), lon_grid.max()
+			lat0, lat1 = lat_grid.min(), lat_grid.max()
+			contour_mpg.interior_lons = [contour_mpg.lons]
+			contour_mpg.interior_lats = [contour_mpg.lats]
+			contour_mpg.lons = [[lon0, lon0, lon1, lon1, lon0]]
+			contour_mpg.lats = [[lat0, lat1, lat1, lat0, lat0]]
+		polygon_style = lbm.PolygonStyle(line_pattern='-', line_color=None,
+										line_width=0, fill_hatch='\\', hatch_color='c',
+										fill_color="none")
+		"""
+		contour_line_style = lbm.LineStyle(line_pattern='-', line_color='c',
 										line_width=1, label_style=None, alpha=0)
 		grid_style = lbm.GridStyle(None, color_gradient=None, line_style=contour_line_style,
 									contour_levels=contour_levels, colorbar_style=None,
 									fill_hatches=['\\'])
 		layer = lbm.MapLayer(grid_data, grid_style)
+		"""
+		layer = lbm.MapLayer(contour_mpg, polygon_style)
 		layers.append(layer)
 
 		## Contour line
-		contour_line_style = lbm.LineStyle(line_pattern='-', line_color='yellow',
+		contour_line_style = lbm.LineStyle(line_pattern='-', line_color='c',
 										line_width=2, label_style=None)
 		grid_style = lbm.GridStyle(None, color_gradient=None, line_style=contour_line_style,
 									contour_levels=contour_levels, colorbar_style=None)
@@ -775,6 +803,14 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 
 		map.map.imshow(greys)
 		map.map.imshow(colors)
+
+	## Add text box
+	if text_box:
+		pos = (0.965, 0.035)
+		text_style = lbm.TextStyle(font_size=14, horizontal_alignment='right',
+							vertical_alignment='bottom', multi_alignment='left',
+							background_color='w', border_color='k', border_pad=0.5)
+		map.draw_text_box(pos, text_box, text_style)
 
 	if fig_filespec:
 		map.plot(fig_filespec=fig_filespec, dpi=200)

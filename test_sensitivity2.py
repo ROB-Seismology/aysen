@@ -9,17 +9,18 @@ from hazard.rshalib.source_estimation import calc_rupture_probability_from_groun
 from aysenlib import (project_folder, gis_folder, read_evidence_sites_from_gis,
 						read_fault_source_model_as_network, get_roman_intensity,
 						plot_rupture_probabilities, TRT, MSR)
+from create_animated_gif import create_animated_gif
 
 
 
-fig_folder = os.path.join(project_folder, "Figures", "Sensitivity", "v4")
+fig_folder = os.path.join(project_folder, "Figures", "Sensitivity", "v5", "ResolutionPower")
 
 
 ## Thresholds (depends on type of evidence)
 ## Note: thresholds chosen such that they are not all positive or negative for chosen scenario
 
 ## NE: 7.5, 8.5
-## PE: 5.5, 6.0, 6.5 7.5
+## PE: 5.5, 6.5, 7.5
 threshold_mmi = 7.5
 
 
@@ -38,13 +39,16 @@ strict_intersection = True
 
 ## Map parameters
 #map_region = (-74, -72, -46, -44.5)
-map_region = (-74, -72, -46.25, -44.75)
+map_region = (-74, -72, -46.25, -44.8)
 output_format = "png"
 
 
 ## IPE Logic tree
-ipe_models = ["Barrientos1980WithSigma", "BakunWentworth1997WithSigma", "AllenEtAl2012", "AtkinsonWald2007"]
-weights = [0.32, 0.26, 0.25, 0.17]
+#ipe_models = ["Barrientos1980WithSigma", "BakunWentworth1997WithSigma", "AllenEtAl2012", "AtkinsonWald2007"]
+#weights = [0.32, 0.26, 0.25, 0.17]
+ipe_models = ["Barrientos1980WithSigma", "BakunWentworth1997WithSigma", "AllenEtAl2012"]
+weights = [0.34, 0.33, 0.33]
+
 lt_gmpe_system_def = {TRT: rshalib.pmf.GMPEPMF(ipe_models, weights)}
 lt_integration_distance_dict = {"AtkinsonWald2007": (None, 30)}
 #TODO: apply distance filtering for BakunWentworth1997WithSigma when M larger than
@@ -54,7 +58,7 @@ lt_integration_distance_dict = {"AtkinsonWald2007": (None, 30)}
 
 ## Read site info
 all_site_models = []
-for geom_type in ["Polygons_v2", "Points"]:
+for geom_type in ["Polygons_v3", "Points"]:
 	shapefile = os.path.join(gis_folder, "%s.shp" % geom_type)
 	site_models = read_evidence_sites_from_gis(shapefile, polygon_discretization)
 	for site_model in site_models:
@@ -65,12 +69,13 @@ print len(all_site_models)
 
 
 ## Discretize faults as network
-fault_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel3.TAB")
+fault_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel4.TAB")
 dM = 0.2
 fault_mags, fault_networks = [], []
 for M, source_model in read_fault_source_model_as_network(fault_filespec, dM=dM):
 	fault_mags.append(M)
 	fault_networks.append(source_model)
+
 
 """
 source_model = fault_networks[0]
@@ -82,7 +87,7 @@ exit()
 """
 
 ## Loop over IPEs
-for ipe_name in ipe_models[1:2]:
+for ipe_name in ipe_models:
 	print ipe_name
 	if ipe_name != "LogicTree":
 		trt_gsim_dict = {TRT: ipe_name}
@@ -94,9 +99,6 @@ for ipe_name in ipe_models[1:2]:
 
 	## Loop over scenario magnitudes and corresponding fault networks
 	for scen_mag, scen_flt_network in zip(fault_mags, fault_networks):
-		#if not (6.2 <= scen_mag <= 6.3):
-		if scen_mag > 5.2:
-			continue
 		print("M=%.2f" % scen_mag)
 		respow_dict = {}
 
@@ -197,29 +199,38 @@ for ipe_name in ipe_models[1:2]:
 			#for n in range(N):
 			#	print mag_diffs[n], distances[n], prob_diffs[n], dx[n], (prob_diffs * dx)[n]
 
+		respows = np.array(respow_dict.values())
+		respows = respows[:, 0]
+		max_rp = respows.max()
+
 
 		## Plot map
 		if "WithSigma" in ipe_name:
 			ipe_label = ipe_name[:ipe_name.find("WithSigma")]
 		else:
 			ipe_label = ipe_name
-		text_box = "Scenario M:%.2f\nThreshold MMI: %s\nIPE: %s"
+		text_box = "Scenario M:%.2f\nThreshold MMI: %s\nIPE: %s\nRPmax: %.2f"
 		roman_intensity = get_roman_intensity(threshold_mmi)
-		text_box %= (scen_mag, roman_intensity, ipe_label)
+		text_box %= (scen_mag, roman_intensity, ipe_label, max_rp)
 
 		title = ""
-		fig_filename = "ResPow_%s_M=%.2f_MMI=%s.%s" % (ipe_name, scen_mag, threshold_mmi, output_format)
+		fig_filename = "ResPow_%s_MMI=%s_M=%.2f.%s" % (ipe_name, threshold_mmi, scen_mag, output_format)
 		#fig_filename = "ResPow_test.png"
 		fig_filespec = os.path.join(fig_folder, fig_filename)
 		#fig_filespec = None
 
-		## Colormaps: RdBu_r, YlOrRd, BuPu, RdYlBu_r, Greys
-		site_model_gis_file = os.path.join(gis_folder, "Polygons_v2.shp")
+		## Colormaps: PuRd, YlOrRd, Purples
+		# TODO: choose other color map !!
+		site_model_gis_file = os.path.join(gis_folder, "Polygons_v3.shp")
 		plot_rupture_probabilities(scen_flt_network, respow_dict, [], [],
-									map_region, plot_point_ruptures=True, colormap="RdYlBu_r",
+									map_region, plot_point_ruptures=True, colormap="magma",
 									title=title, text_box=text_box, site_model_gis_file=site_model_gis_file,
-									legend_label="Sensitivity", prob_max=0.75,
+									legend_label="Resolving Power", prob_max=1,
 									highlight_max_prob_section=True,
 									max_prob_mag_precision=0,
 									neutral_site_models=all_site_models,
 									fig_filespec=fig_filespec)
+
+	## Generate animated GIF
+	img_basename = "ResPow_%s_MMI=%s" % (ipe_name, threshold_mmi)
+	create_animated_gif(fig_folder, img_basename)
