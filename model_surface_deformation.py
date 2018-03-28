@@ -15,7 +15,8 @@ import numpy as np
 import mapping.layeredbasemap as lbm
 from eqgeology.faultlib import okada
 
-from aysenlib import (read_fault_source_model_as_network, read_fault_source_model)
+from aysenlib import (read_fault_source_model_as_network, read_fault_source_model,
+					gis_folder)
 
 
 ## Folders
@@ -37,28 +38,6 @@ def read_fault_info(fault_id, num_sections):
 
 
 if __name__ == "__main__":
-	#for flt in read_fault_source_model(fault_filespec):
-	#	print flt.source_id, flt.name
-	#exit()
-	#flt_id = "2#01+2#02+2#03+2#04+2#05"
-	flt_id = "0#05+0#06+0#07"
-	num_sections = 3
-	flt = read_fault_info(flt_id, num_sections)
-
-	## Override geometry (dip, depth)
-	flt.dip = 88
-	flt.lower_seismogenic_depth = 14
-	flt.rake = 176
-
-	subfaults = flt.get_subfaults(num_sections, 1)
-
-	## Override kinematics (rake, mu)
-	## Note: dip would only work if fault is not subdivided downdip
-	for subflt in subfaults:
-		subflt.mu = 3E+10
-		subflt.rake = 176
-		#subflt.calculate_geometry()
-
 	## Map parameters
 	#map_region = (-74, -72, -46.25, -44.75)
 	#graticule_interval = (1, 0.5)
@@ -68,14 +47,49 @@ if __name__ == "__main__":
 	map_region = (-73.22, -72.77, -45.56, -45.22)
 	graticule_interval = (0.2, 0.1)
 
-	## Compute surface deformation
+	## Read fault model
+	#for flt in read_fault_source_model(fault_filespec):
+	#	print flt.source_id, flt.name
+	#exit()
+	"""
+	#flt_id = "2#01+2#02+2#03+2#04+2#05"
+	flt_id = "0#05+0#06+0#07+0#08"
+	num_sections = len(flt_id.split('+'))
+	flt = read_fault_info(flt_id, num_sections)
+	"""
+
+	gis_filespec = os.path.join(gis_folder, "InSAR_fault_rupture.TAB")
+	flt = read_fault_source_model(gis_filespec, characteristic=False).sources[1]
+	#flt.reverse_trace()
+	num_sections = 15
+
+
+	## Override geometry (dip, depth)
+	flt.dip = 88
+	flt.lower_seismogenic_depth = 14
+	flt.rake = 176
+	print flt.get_dip_direction()
+
+	subfaults = flt.get_subfaults(num_sections, 1)[:,0]
+
+	## Override kinematics (rake, mu)
+	## Note: dip would only work if fault is not subdivided downdip
+	for subflt in subfaults:
+		subflt.mu = 3E+10
+		#subflt.rake = 176
+		subflt.rake = 145
+		#subflt.calculate_geometry()
+
+	## Set slip distribution
+	mag = 6.3
 	elastic_fault = okada.create_fault(subfaults)
-	elastic_fault.set_slip_from_magnitude(6.2)
+	elastic_fault.set_slip_from_magnitude(mag)
 	elastic_fault.taper_slip()
 	for s, subflt in enumerate(elastic_fault.subfaults):
 		print s, subflt.slip, subflt.calc_magnitude()
 	print elastic_fault.calc_magnitude()
 
+	## Compute surface deformation
 	num_pts = 101
 	#num_pts = 25
 	x = np.linspace(map_region[0], map_region[1], num_pts)
@@ -83,18 +97,27 @@ if __name__ == "__main__":
 	X, Y = np.meshgrid(x, y)
 	U = elastic_fault.okada(X, Y)
 
+	## InSAR parameters
+	## wavelength (in m)
+	wavelength = 0.2360571
+	## Azimuth (satellite looks right)
+	insar_az = -11.7 + 90
+	## Off-nadir angle
+	off_nadir = 34.3
+
 	## Take component
-	component = 'E'
+	#component = 'E'
 	#dZ = getattr(U, component)
 	## Along-strike
 	#azimuth = np.round(elastic_fault.subfaults[0].strike)
 	#elevation_angle = 0
 	#comp_string = "AS"
 	## LOS (satellite looks right)
-	azimuth = -11.7 + 90 + 180
-	elevation_angle = 90 - 34.3
+	azimuth = insar_az + 180
+	elevation_angle = 90 - off_nadir
+	#azimuth, elevation_angle = 0, 75
 	component = (azimuth, elevation_angle)
-	dZ = U.get_los_component(*component)
+	dZ = U.get_los_component(*component, direction="up")
 	comp_string = component if not isinstance(component, tuple) else "LOS"
 	dzmax = np.abs(dZ.max() - dZ.min())
 	print U.U.max(), dzmax
@@ -108,6 +131,7 @@ if __name__ == "__main__":
 	#output = "displacement"
 	output = "phase"
 	#output = "vector"
+	#output = None
 
 	layers = []
 
@@ -118,22 +142,37 @@ if __name__ == "__main__":
 	layer = lbm.MapLayer(data, style)
 	#layers.append(layer)
 
+	## DEM
+	url = 'http://seishaz.oma.be:8080/geoserver/wcs'
+	layer_name, grid_resolution = "ngdc:etopo1_bedrock", 1./60
+	wcs_data = lbm.WCSData(url, layer_name, resolution=grid_resolution, region=map_region)
+	colorbar_style = lbm.ColorbarStyle("Elevation (m)", label_size=12)
+	hillshade_style = None
+	cmap = "gist_earth"
+	tsc = lbm.ThematicStyleColormap(color_map=cmap, vmin=0, vmax=2000)
+	style = lbm.GridStyle(color_map_theme=tsc, colorbar_style=colorbar_style, line_style=None, pixelated=False, hillshade_style=hillshade_style)
+	layer = lbm.MapLayer(wcs_data, style)
+	#layers.append(layer)
+
 	## Wrapped phase
 	grd_file = os.path.join(fig_folder, "filt_topophase.mph.vrt")
-	grid_data = lbm.GdalRasterData(grd_file, band_nr=2)
+	grid_data = lbm.GdalRasterData(grd_file, band_nr=2, down_sampling=4)
 
 	## Unwrapped
-	#grd_file = os.path.join(fig_folder, "filt_topophase.unw.geo.tiff")
-	#grid_data = lbm.GdalRasterData(grd_file, band_nr=1)
+	"""
+	grd_file = os.path.join(fig_folder, "2007040220070703-absolute.tif")
+	grid_data = lbm.GdalRasterData(grd_file, band_nr=1,
+						value_conversion=lambda x: x * wavelength / (4 * np.pi))
 
 	grid_data.apply_bbox((map_region[0], map_region[2], map_region[1], map_region[3]))
 	grid_data = grid_data.interpolate_grid(X, Y)
-	#values = grid_data.values
-	#print values.min(), values.max()
+	"""
+
 
 	## Wrapped phase
 	#color_map = matplotlib.cm.jet
 	#color_map_theme = lbm.ThematicStyleColormap(color_map=color_map, vmin=0, vmax=2e+6)
+	#colorbar_title = "Amplitude"
 	color_map = matplotlib.cm.hsv
 	color_map_theme = lbm.ThematicStyleColormap(color_map=color_map, vmin=-np.pi, vmax=np.pi)
 	colorbar_title = "Wrapped phase"
@@ -141,21 +180,23 @@ if __name__ == "__main__":
 	#contour_line_style = lbm.LineStyle(label_style=lbm.TextStyle())
 	contour_line_style = None
 
+
 	## Unwrapped
 	"""
 	color_map = matplotlib.cm.jet
-	color_map_theme = lbm.ThematicStyleColormap(color_map=color_map, vmin=None, vmax=None)
-	colorbar_title = "Unwrapped phase"
-	contour_levels = np.arange(-160, -110, 10)
+	color_map_theme = lbm.ThematicStyleColormap(color_map=color_map, vmin=-0.7, vmax=0.3)
+	colorbar_title = "LOS Displacement (m)"
+	contour_levels = np.arange(-0.6, 0.30, 0.1)
 	contour_line_style = lbm.LineStyle(label_style=lbm.TextStyle())
 	"""
+
 
 	colorbar_style = lbm.ColorbarStyle(colorbar_title, format="%.2f")
 	grid_style = lbm.GridStyle(color_map_theme, color_gradient="continuous",
 					line_style=contour_line_style, contour_levels=contour_levels,
 					colorbar_style=colorbar_style)
 	layer = lbm.MapLayer(grid_data, grid_style)
-	layers.append(layer)
+	#layers.append(layer)
 
 
 	## Displacement / Phase
@@ -174,15 +215,22 @@ if __name__ == "__main__":
 			contour_line_style = lbm.LineStyle(label_style=lbm.TextStyle())
 
 		elif output == "phase":
-			wavelength = 0.2362
-			#grid_data = lbm.MeshGridData(X, Y, (dZ * 4 * np.pi / wavelength) % (2 * np.pi)
-			grid_data = lbm.MeshGridData(X, Y, (dZ * 4 * 180. / wavelength) % (360.))
+			from matplotlib.colors import LinearSegmentedColormap
+			delta_phi = U.get_phase_difference(*component, wavelength=wavelength,
+											direction="up", measure="degrees")
+			grid_data = lbm.MeshGridData(X, Y, delta_phi)
 			#color_map = cmocean.cm.phase
-			color_map = matplotlib.cm.hsv
+			#color_map = matplotlib.cm.hsv
+			colors = ['b', 'r', 'yellow', 'c', 'b']
+			color_map = LinearSegmentedColormap.from_list("InSAR phase", colors, N=256)
 			color_map_theme = lbm.ThematicStyleColormap(color_map=color_map, vmin=0, vmax=360, alpha=0.5)
 			colorbar_title = "%s phase (degrees)" % comp_string
 			contour_levels = [0.,360.]
 			contour_line_style = lbm.LineStyle(label_style=None)
+
+		## Mask oceans
+		#from mpl_toolkits.basemap import maskoceans
+		#grid_data.values = maskoceans(grid_data.lons, grid_data.lats, grid_data.values, resolution='h')
 
 		colorbar_style = lbm.ColorbarStyle(colorbar_title, format="%.2f")
 		#colorbar_style = None
@@ -190,26 +238,51 @@ if __name__ == "__main__":
 						line_style=contour_line_style, contour_levels=contour_levels,
 						colorbar_style=colorbar_style)
 		layer = lbm.MapLayer(grid_data, grid_style)
-		#layers.append(layer)
+		layers.append(layer)
 
 	elif output == "vector":
-		grid_data1 = lbm.MeshGridData(X, Y, U.E)
-		grid_data2 = lbm.MeshGridData(X, Y, U.N)
+		grid_data1 = lbm.MeshGridData(X[::4,::4], Y[::4,::4], U.E[::4,::4])
+		grid_data2 = lbm.MeshGridData(X[::4,::4], Y[::4,::4], U.N[::4,::4])
 		vector_data = lbm.MeshGridVectorData(grid_data1, grid_data2, unit='m')
-		color_map = colormaps.blue_white_red
-		color_map_theme = lbm.ThematicStyleColormap(color_map=color_map, vmin=-0.5, vmax=0.5)
 		colorbar_title = "Displacement (m)"
 		contour_levels = None
 		vector_style = lbm.VectorStyle(color='b', scale=0.005, width=1, pivot="tail",
-									thematic_legend_style=color_map_theme)
+									thematic_legend_style=None)
 		layer = lbm.MapLayer(vector_data, vector_style)
 		layers.append(layer)
 
+		grid_data1 = lbm.MeshGridData(X, Y, np.zeros_like(U.E))
+		grid_data2 = lbm.MeshGridData(X, Y, U.Z)
+		vector_data = lbm.MeshGridVectorData(grid_data1, grid_data2, unit='m')
+		colorbar_title = "Displacement (m)"
+		contour_levels = None
+		vector_style = lbm.VectorStyle(color='r', scale=0.005, width=1, pivot="tail",
+									thematic_legend_style=None)
+		layer = lbm.MapLayer(vector_data, vector_style)
+		#layers.append(layer)
+
+	text_box = ""
+	if output:
+		text_box = u"Length: %.1f km\n" % flt.get_length()
+		text_box += "Depth: %.1f km\n" % flt.lower_seismogenic_depth
+		text_box += u"Dip: %d°\n" % flt.dip
+		text_box += u"Rake: %d°\n" % flt.rake
+		#text_box += "Slip: %s m\n" % '/'.join(["%.2f" % subflt.slip for subflt in elastic_fault.subfaults])
+		text_box += "Slip: %.2f m\n" % elastic_fault.calc_average_slip()
+		text_box += "Magnitude: %.1f\n" % elastic_fault.calc_magnitude()
+		text_box += "Displacement: %.2f/%.2f m" % (dZ.min(), dZ.max())
+
 	## Coastlines
-	coastline_style = countries_style = lbm.LineStyle(line_width=0.75, line_color="dimgrey")
+	coastline_style = countries_style = lbm.LineStyle(line_width=0.75, line_color="k")
 	data = lbm.BuiltinData("coastlines")
 	layer = lbm.MapLayer(data, coastline_style)
 	layers.append(layer)
+
+	#continent_style = lbm.PolygonStyle(fill_color="none", line_width=0)
+	#continent_style.bg_color = "white"
+	#data = lbm.BuiltinData("continents")
+	#layer = lbm.MapLayer(data, continent_style)
+	#layers.append(layer)
 
 	## Faults
 	gis_filename = "LOFZ_breukenmodel.shp"
@@ -232,18 +305,12 @@ if __name__ == "__main__":
 			legend_style=legend_style)
 
 	## Add text box
-	pos = (0.965, 0.965)
-	text_style = lbm.TextStyle(font_size=10, horizontal_alignment='right',
-						vertical_alignment='top', multi_alignment='center',
-						background_color='white', border_pad=0.4, border_color='k')
-	text = u"Length: %.1f km\n" % flt.get_length()
-	text += "Depth: %.1f km\n" % flt.lower_seismogenic_depth
-	text += u"Dip: %d°\n" % flt.dip
-	text += u"Rake: %d°\n" % flt.rake
-	text += "Slip: %s m\n" % '/'.join(["%.2f" % subflt.slip for subflt in elastic_fault.subfaults])
-	text += "Magnitude: %.1f\n" % elastic_fault.calc_magnitude()
-	text += "Displacement: %.2f/%.2f m" % (dZ.min(), dZ.max())
-	map.draw_text_box(pos, text, text_style)
+	if text_box:
+		pos = (0.965, 0.965)
+		text_style = lbm.TextStyle(font_size=10, horizontal_alignment='right',
+							vertical_alignment='top', multi_alignment='center',
+							background_color='white', border_pad=0.4, border_color='k')
+		map.draw_text_box(pos, text_box, text_style)
 
 	fig_filespec = None
 	fig_filename = "okada_test_%s_%s.png" % (output, comp_string)
