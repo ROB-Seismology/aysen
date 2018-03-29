@@ -77,12 +77,18 @@ for M, source_model in read_fault_source_model_as_network(fault_filespec, dM=dM)
 	fault_networks.append(source_model)
 
 
+## Test: export fault network to GIS file
 """
+import ogr
 source_model = fault_networks[0]
 data = source_model.to_lbm_data()
 print data.lines[0].to_wkt()
 from mapping.layeredbasemap.data_types import export_ogr
-export_ogr(data.lines, "faults")
+ds = export_ogr(data.lines, "faults")
+driver = ogr.GetDriverByName("MapInfo File")
+out_filename = "LOFZ_network_n=1.TAB"
+out_filespec = os.path.join(gis_folder, out_filename)
+out_ds = driver.CopyDataSource(ds, out_filespec)
 exit()
 """
 
