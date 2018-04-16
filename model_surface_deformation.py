@@ -20,8 +20,8 @@ from aysenlib import (read_fault_source_model_as_network, read_fault_source_mode
 
 
 ## Folders
-#project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
-project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
+project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
+#project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
 gis_folder = os.path.join(project_folder, "GIS")
 fig_folder = os.path.join(project_folder, "Figures", "insar")
 
@@ -97,6 +97,7 @@ if __name__ == "__main__":
 	X, Y = np.meshgrid(x, y)
 	U = elastic_fault.okada(X, Y)
 
+
 	## InSAR parameters
 	## wavelength (in m)
 	wavelength = 0.2360571
@@ -107,7 +108,6 @@ if __name__ == "__main__":
 
 	## Take component
 	#component = 'E'
-	#dZ = getattr(U, component)
 	## Along-strike
 	#azimuth = np.round(elastic_fault.subfaults[0].strike)
 	#elevation_angle = 0
@@ -116,11 +116,30 @@ if __name__ == "__main__":
 	azimuth = insar_az + 180
 	elevation_angle = 90 - off_nadir
 	#azimuth, elevation_angle = 0, 75
-	component = (azimuth, elevation_angle)
-	dZ = U.get_los_component(*component, direction="up")
-	comp_string = component if not isinstance(component, tuple) else "LOS"
-	dzmax = np.abs(dZ.max() - dZ.min())
+	component = (azimuth, elevation_angle, "up")
+
+	dZ = U.get_component(component)
+	dzmax = dZ.range()
 	print U.U.max(), dzmax
+
+	## Test inverting for slip distribution
+	original_slip_distribution = [subflt.slip for subflt in elastic_fault.subfaults]
+	#elastic_fault.set_slip_from_magnitude(mag-0.5)
+	for subflt in elastic_fault.subfaults:
+		subflt.slip = 0
+	phase_info = None
+	D_obs = dZ.Z
+	#phase_info = (wavelength, "degrees")
+	#D_obs = dZ.get_unwrapped_phase_difference(*phase_info)
+	inverted_slip_distribution = elastic_fault.invert_slip_distribution(X, Y, D_obs,
+									component, max_slip=2, phase_info=phase_info)
+	import pylab
+	pylab.plot(original_slip_distribution, label="Original")
+	pylab.plot(inverted_slip_distribution, label="Inverted")
+	pylab.legend()
+	pylab.show()
+
+	exit()
 
 
 	## Plot
@@ -135,14 +154,8 @@ if __name__ == "__main__":
 
 	layers = []
 
-	## InSAR image
-	img_file = os.path.join(fig_folder, "insar.jpg")
-	data = lbm.ImageData(img_file, 0, 0, coord_frame="display")
-	style = lbm.ImageStyle(horizontal_alignment='stretch', vertical_alignment='stretch', on_top=False)
-	layer = lbm.MapLayer(data, style)
-	#layers.append(layer)
-
 	## DEM
+	"""
 	url = 'http://seishaz.oma.be:8080/geoserver/wcs'
 	layer_name, grid_resolution = "ngdc:etopo1_bedrock", 1./60
 	wcs_data = lbm.WCSData(url, layer_name, resolution=grid_resolution, region=map_region)
@@ -153,50 +166,7 @@ if __name__ == "__main__":
 	style = lbm.GridStyle(color_map_theme=tsc, colorbar_style=colorbar_style, line_style=None, pixelated=False, hillshade_style=hillshade_style)
 	layer = lbm.MapLayer(wcs_data, style)
 	#layers.append(layer)
-
-	## Wrapped phase
-	grd_file = os.path.join(fig_folder, "filt_topophase.mph.vrt")
-	grid_data = lbm.GdalRasterData(grd_file, band_nr=2, down_sampling=4)
-
-	## Unwrapped
 	"""
-	grd_file = os.path.join(fig_folder, "2007040220070703-absolute.tif")
-	grid_data = lbm.GdalRasterData(grd_file, band_nr=1,
-						value_conversion=lambda x: x * wavelength / (4 * np.pi))
-
-	grid_data.apply_bbox((map_region[0], map_region[2], map_region[1], map_region[3]))
-	grid_data = grid_data.interpolate_grid(X, Y)
-	"""
-
-
-	## Wrapped phase
-	#color_map = matplotlib.cm.jet
-	#color_map_theme = lbm.ThematicStyleColormap(color_map=color_map, vmin=0, vmax=2e+6)
-	#colorbar_title = "Amplitude"
-	color_map = matplotlib.cm.hsv
-	color_map_theme = lbm.ThematicStyleColormap(color_map=color_map, vmin=-np.pi, vmax=np.pi)
-	colorbar_title = "Wrapped phase"
-	contour_levels = None
-	#contour_line_style = lbm.LineStyle(label_style=lbm.TextStyle())
-	contour_line_style = None
-
-
-	## Unwrapped
-	"""
-	color_map = matplotlib.cm.jet
-	color_map_theme = lbm.ThematicStyleColormap(color_map=color_map, vmin=-0.7, vmax=0.3)
-	colorbar_title = "LOS Displacement (m)"
-	contour_levels = np.arange(-0.6, 0.30, 0.1)
-	contour_line_style = lbm.LineStyle(label_style=lbm.TextStyle())
-	"""
-
-
-	colorbar_style = lbm.ColorbarStyle(colorbar_title, format="%.2f")
-	grid_style = lbm.GridStyle(color_map_theme, color_gradient="continuous",
-					line_style=contour_line_style, contour_levels=contour_levels,
-					colorbar_style=colorbar_style)
-	layer = lbm.MapLayer(grid_data, grid_style)
-	#layers.append(layer)
 
 
 	## Displacement / Phase
@@ -207,24 +177,24 @@ if __name__ == "__main__":
 			contour_levels = np.arange(contour_interval, dzmax+contour_interval, contour_interval)
 			contour_levels = list(-contour_levels[::-1]) + [0.] + list(contour_levels)
 
-			grid_data = lbm.MeshGridData(X, Y, dZ)
+			grid_data = lbm.MeshGridData(dZ.X, dZ.Y, dZ.Z)
 			color_map = colormaps.blue_white_red
 			color_map_theme = lbm.ThematicStyleColormap(color_map=color_map, vmin=-0.5, vmax=0.5)
-			colorbar_title = "%s displacement (m)" % comp_string
+			colorbar_title = "%s displacement (m)" % dZ.comp_label
 			#contour_levels = None
 			contour_line_style = lbm.LineStyle(label_style=lbm.TextStyle())
 
 		elif output == "phase":
 			from matplotlib.colors import LinearSegmentedColormap
-			delta_phi = U.get_phase_difference(*component, wavelength=wavelength,
-											direction="up", measure="degrees")
-			grid_data = lbm.MeshGridData(X, Y, delta_phi)
+			delta_phi = dZ.get_wrapped_phase_difference(wavelength=wavelength,
+											measure="degrees")
+			grid_data = lbm.MeshGridData(dZ.X, dZ.Y, delta_phi)
 			#color_map = cmocean.cm.phase
 			#color_map = matplotlib.cm.hsv
 			colors = ['b', 'r', 'yellow', 'c', 'b']
 			color_map = LinearSegmentedColormap.from_list("InSAR phase", colors, N=256)
 			color_map_theme = lbm.ThematicStyleColormap(color_map=color_map, vmin=0, vmax=360, alpha=0.5)
-			colorbar_title = "%s phase (degrees)" % comp_string
+			colorbar_title = "%s phase (degrees)" % dZ.comp_label
 			contour_levels = [0.,360.]
 			contour_line_style = lbm.LineStyle(label_style=None)
 
@@ -237,6 +207,20 @@ if __name__ == "__main__":
 		grid_style = lbm.GridStyle(color_map_theme, color_gradient="continuous",
 						line_style=contour_line_style, contour_levels=contour_levels,
 						colorbar_style=colorbar_style)
+
+		## Add topographic hillshading
+		"""
+		#elevation_grid = lbm.GdalRasterData(r"D:\GIS-data\DEM\Etopo2.bin", region=map.region)
+		url = 'http://seishaz.oma.be:8080/geoserver/wcs'
+		layer_name, grid_resolution = "ngdc:etopo1_bedrock", 1./60
+		elevation_grid = lbm.WCSData(url, layer_name, resolution=grid_resolution, region=map_region)
+		blend_mode = "soft"
+		hillshade_style = lbm.HillshadeStyle(0, 45, 1, blend_mode=blend_mode,
+												elevation_grid=elevation_grid)
+		grid_style.hillshade_style = hillshade_style
+		grid_style.pixelated = True
+		"""
+
 		layer = lbm.MapLayer(grid_data, grid_style)
 		layers.append(layer)
 
@@ -313,7 +297,7 @@ if __name__ == "__main__":
 		map.draw_text_box(pos, text_box, text_style)
 
 	fig_filespec = None
-	fig_filename = "okada_test_%s_%s.png" % (output, comp_string)
+	fig_filename = "okada_test_%s_%s.png" % (output, dZ.comp_label)
 	#fig_filespec = os.path.join(fig_folder, fig_filename)
 
 	if fig_filespec:
