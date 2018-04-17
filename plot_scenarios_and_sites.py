@@ -14,7 +14,7 @@ fig_folder = os.path.join(project_folder, "Figures", "Paper")
 #map_region = (-74, -72, -46.0, -44.75)
 map_region = (-74, -72, -46.25, -44.8)
 
-output_format = "pdf"
+output_format = "png"
 
 fig_filename = "Scenario_and_site_map.%s" % output_format
 fig_filespec = os.path.join(fig_folder, fig_filename)
@@ -103,16 +103,17 @@ data = points[0].to_multi_point()
 for point in points[1:]:
 	data.append(point)
 label_style = lbm.TextStyle(font_size=9, color='b', horizontal_alignment='left', offset=(7,0))
-style = lbm.PointStyle(shape='D', size=6, fill_color='b', line_color='k', label_style=label_style)
+style = lbm.PointStyle(shape='D', size=4, fill_color='b', line_color='k', label_style=label_style)
 layer = lbm.MapLayer(data, style, legend_label='Point sites')
 layers.append(layer)
 
 
 title = ""
 legend_style = lbm.LegendStyle(location=4)
+scalebar_style = lbm.ScalebarStyle((-72.25, -44.9), 25, font_size=12, yoffset=2000)
 map = lbm.LayeredBasemap(layers, title, "merc", region=map_region,
 						graticule_interval=(1, 0.5), resolution='h',
-						legend_style=legend_style)
+						legend_style=legend_style, scalebar_style=scalebar_style)
 
 if fig_filespec:
 	dpi = 200
