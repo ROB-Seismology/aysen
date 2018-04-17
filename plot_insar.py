@@ -31,8 +31,8 @@ wavelength = 0.2360571
 
 
 ## Folders
-project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
-#project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
+#project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
+project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
 gis_folder = os.path.join(project_folder, "GIS")
 fig_folder = os.path.join(project_folder, "Figures", "insar")
 
@@ -92,7 +92,7 @@ grid_style = lbm.GridStyle(color_map_theme, color_gradient="continuous",
 				line_style=contour_line_style, contour_levels=contour_levels,
 				colorbar_style=colorbar_style)
 layer = lbm.MapLayer(grid_data, grid_style)
-#layers.append(layer)
+layers.append(layer)
 
 
 ## Mask oceans
