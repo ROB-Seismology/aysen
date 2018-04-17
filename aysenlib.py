@@ -629,7 +629,7 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 						ne_site_models, region=None, colormap="RdYlGn_r",
 						title=None, text_box=None, site_model_gis_file=None,
-						neutral_site_models=[], plot_rms_as_alpha=True,
+						neutral_site_models=[], plot_rms_as_alpha=False,
 						plot_epicenter_as="area", fig_filespec=None):
 	layers = []
 
@@ -760,7 +760,7 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 			contour_mpg.lons = [[lon0, lon0, lon1, lon1, lon0]]
 			contour_mpg.lats = [[lat0, lat1, lat1, lat0, lat0]]
 		polygon_style = lbm.PolygonStyle(line_pattern='-', line_color=None,
-										line_width=0, fill_hatch='\\', hatch_color='c',
+										line_width=0, fill_hatch='\\', hatch_color='lawngreen',
 										fill_color="none")
 		"""
 		contour_line_style = lbm.LineStyle(line_pattern='-', line_color='c',
@@ -774,8 +774,8 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 		layers.append(layer)
 
 		## Contour line
-		contour_line_style = lbm.LineStyle(line_pattern='-', line_color='c',
-										line_width=2, label_style=None)
+		contour_line_style = lbm.LineStyle(line_pattern='-', line_color='lawngreen',
+										line_width=2, label_style=None, alpha=1)
 		grid_style = lbm.GridStyle(None, color_gradient=None, line_style=contour_line_style,
 									contour_levels=contour_levels, colorbar_style=None)
 		layer = lbm.MapLayer(grid_data, grid_style)
