@@ -61,9 +61,9 @@ def plot_fault_network(color=False):
 
 ## 2007 intensity maps
 def plot_2007_intensity_maps():
-	event_ID = "20070421"
-	#event_ID = "20070402"
-	ipe_names = ["AllenEtAl2012", "AtkinsonWald2007", "Barrientos1980", "BakunWentworth1997"]
+	#event_ID = "20070421"
+	event_ID = "20070402"
+	ipe_names = ["AllenEtAl2012", "AtkinsonWald2007", "BakunWentworth1997", "Barrientos1980"]
 
 	height, width = 8.8 / 2.54, 11 / 2.54
 	num_cols, num_rows = 2, 2
@@ -399,8 +399,8 @@ def plot_scenario_mag_vs_maxprob():
 
 def plot_resolution_power_maps_by_mag():
 	height, width = 13.4 / 2.54, 12.3 / 2.54
-	#num_cols, num_rows = 2, 3
-	num_cols, num_rows = 3, 2
+	num_cols, num_rows = 2, 3
+	#num_cols, num_rows = 3, 2
 	FIGSIZE = (width * num_cols, height * num_rows)
 	pylab.rcParams['figure.figsize'] = FIGSIZE
 
@@ -427,9 +427,14 @@ def plot_resolution_power_maps_by_mag():
 		ax = pylab.subplot(gs[row, col])
 		ax.imshow(img)
 		ax.set_title(sublabels[m], loc='left', fontsize=13)
+
+		ax.text(0.46, 0, "Resolving Power", transform=ax.transAxes,
+			ha="center", va="bottom", size=11.5,
+			bbox=dict(facecolor='w', edgecolor='none', boxstyle='square, pad=0'))
+
 		ax.set_axis_off()
 
-	out_filename = "Sensitivity_respow_maps_by_mag_poster.png"
+	out_filename = "Sensitivity_respow_maps_by_mag.png"
 	out_filespec = os.path.join(base_fig_folder, "Paper", out_filename)
 	pylab.savefig(out_filespec, dpi=200)
 
@@ -463,6 +468,9 @@ def plot_resolution_power_maps_by_ipe_and_lower_mmi():
 		ax = pylab.subplot(gs[row, col])
 		ax.imshow(img)
 		ax.set_title(sublabels[i], loc='left', fontsize=13)
+		ax.text(0.46, 0, "Resolving Power", transform=ax.transAxes,
+			ha="center", va="bottom", size=11.5,
+			bbox=dict(facecolor='w', edgecolor='none', boxstyle='square, pad=0'))
 		ax.set_axis_off()
 
 	mags = [5.72, 6.48]
@@ -481,7 +489,10 @@ def plot_resolution_power_maps_by_ipe_and_lower_mmi():
 		img = getAutoCroppedImage(img)
 		ax = pylab.subplot(gs[row, col])
 		ax.imshow(img)
-		ax.set_title(sublabels[m], loc='left', fontsize=13)
+		ax.set_title(sublabels[m+2], loc='left', fontsize=13)
+		ax.text(0.46, 0, "Resolving Power", transform=ax.transAxes,
+			ha="center", va="bottom", size=11.5,
+			bbox=dict(facecolor='w', edgecolor='none', boxstyle='square, pad=0'))
 		ax.set_axis_off()
 
 	out_filename = "Sensitivity_respow_maps_by_ipe_and_lower_mmi.png"
@@ -491,4 +502,4 @@ def plot_resolution_power_maps_by_ipe_and_lower_mmi():
 
 
 if __name__ == "__main__":
-	plot_event_results(event_set="all")
+	plot_resolution_power_maps_by_mag()
