@@ -6,9 +6,7 @@ import hazard.rshalib as rshalib
 from hazard.rshalib.gsim.gmpe import NhlibGMPE
 import pylab
 
-
-project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
-#project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
+from aysenlib import (get_roman_intensity, project_folder)
 
 
 ipe_names = ["AtkinsonWald2007", "AllenEtAl2012"]
@@ -19,8 +17,8 @@ M, d = 6.5, 10
 Imin = 7
 intensities = np.linspace(Imin-4, Imin+4, 1001)
 dI = intensities[1] - intensities[0]
-#fig_filename = "IPE_exceedance_prob.png"
-fig_filename = None
+fig_filename = "IPE_exceedance_prob.png"
+#fig_filename = None
 
 for ipe_name, color in zip(ipe_names, colors):
 	oq_ipe = oqhazlib.gsim.get_available_gsims()[ipe_name]()
@@ -43,7 +41,7 @@ for ipe_name, color in zip(ipe_names, colors):
 					np.ones_like(exc_probs), color=color, alpha=0.5)
 		x = exc_intensities[exc_probs>1E-4].mean()
 		y = np.interp(x, exc_intensities, exc_probs)
-		label = "P(I>%s)=%.3f" % (Imin, np.sum(exc_probs)/np.sum(probs))
+		label = "P(I>%s)=%.3f" % (get_roman_intensity(Imin), np.sum(exc_probs)/np.sum(probs))
 		pylab.annotate(label, xy=(x, y), xycoords="data", color=color,
 				xytext=(15, 15), textcoords="offset points",
 				arrowprops=dict(arrowstyle="->", connectionstyle="arc3", color=color))
@@ -51,12 +49,21 @@ for ipe_name, color in zip(ipe_names, colors):
 	xmin, xmax, ymin, ymax = pylab.axis()
 	pylab.vlines(intensities[idx], 0, ymax, 'k', lw=2, linestyle='--')
 
+	## Convert X-axis tick labels (intensities) to Roman numerals
+	locs, xtick_labels = pylab.xticks()
+	num_ticks = len(xtick_labels)
+	xtick_values = np.linspace(xmin, xmax, num_ticks)
+	for i in range(num_ticks):
+		lbl = get_roman_intensity(int(xtick_values[i]))
+		xtick_labels[i].set_text(lbl)
+	pylab.xticks(locs, xtick_labels)
+
 	pylab.xlabel("Intensity (MMI)")
 	pylab.ylabel("Probability Density")
 	pylab.legend()
 
 if fig_filename:
-	fig_filespec = os.path.join(project_folder, "Figures", fig_filename)
+	fig_filespec = os.path.join(project_folder, "Figures", "Paper", fig_filename)
 	dpi = 300
 	pylab.savefig(fig_filespec, dpi=dpi)
 else:
