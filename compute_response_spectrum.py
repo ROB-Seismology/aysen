@@ -3,6 +3,8 @@ import xlrd
 import numpy as np
 import obspy
 
+import seismology.obspy_tools as ot
+
 
 FOLDER = r"E:\Home\_kris\Publications\2018 - Chile_Intraslab-Megathrust"
 
@@ -88,152 +90,6 @@ def get_station_network(station_id):
 	return network
 
 
-def get_fas(tr, smooth=False):
-	## Perform FFT
-	fas = np.fft.fft(tr.data.astype(np.complex))
-
-	## Construct corresponding frequencies
-	n = len(tr.data)
-	d = 1. / tr.stats.sampling_rate
-	freqs = np.fft.fftfreq(n, d)
-
-	## Limit FFT to positive frequencies
-	idxs = freqs > 0
-	freqs = freqs[idxs]
-
-	## Take absolute value of complex numbers
-	fas = np.abs(fas[idxs])
-
-	## Multiply by the sample interval to get amplitude per frequency unit
-	## See https://nl.mathworks.com/matlabcentral/answers/15770-scaling-the-fft-and-the-ifft
-	fas *= d
-
-	## Smoothing
-	if smooth:
-		from obspy.signal.konnoohmachismoothing import konnoOhmachiSmoothing
-		fas = konnoOhmachiSmoothing(fas, freqs, normalize=False)
-
-	return (freqs, fas)
-
-
-def get_rs_rvt(tr, smooth=False, damping=0.05):
-	import pyrvt
-
-	freqs, fas = get_fas(tr, smooth=smooth)
-	duration = tr.stats.delta * len(tr.data)
-	#duration = None
-	rvt = pyrvt.motions.RvtMotion(freqs, fas, duration=duration)
-	rs = rvt.compute_osc_resp(freqs, damping=damping)
-	return (freqs, rs)
-
-
-def get_max_peak_to_peak_height(tr):
-	## Find indexes where signal changes in polarity
-	diff = np.diff(tr.data)
-	sign = np.sign(diff)
-	idxs = np.where(sign[:-1] != sign[1:])[0] + 1
-
-	## Find amplitude differences between successive polarity changes
-	amp_diff = tr.data[idxs[1:]] - tr.data[idxs[:-1]]
-	abs_amp_diff = np.abs(amp_diff)
-	idx = abs_amp_diff.argmax()
-	idx0 = idxs[idx]
-	max_peak_height = amp_diff[idx]
-	if max_peak_height > 0:
-		idx1 = idxs[idx-1]
-	else:
-		idx1 = idxs[idx+1]
-
-	return (np.abs(max_peak_height), sorted([idx0, idx1]))
-
-
-def get_energy(tr):
-	return np.sum(tr.data**2) * tr.stats.delta
-
-
-def check_parseval_theorem(tr):
-	## According to Parseval's theorem, the energy in the time domain
-	## must equal the energy in the frequency domain
-	e_time = get_energy(tr)
-	freqs, fas = get_fas(tr)
-	[df] = np.diff(freqs[:2])
-	e_freq = np.sum(fas**2) * df * 2  # multiply by 2 to account for negative freqs
-	return np.isclose(e_time, e_freq)
-
-
-def download_station_metadata(station_id, network='C'):
-	from obspy.fdsn.client import Client
-	client = Client("IRIS")
-	inv = client.get_stations(network=network, station=station_id, level="channel")
-	return inv
-
-
-def download_event_info(timestamp, twin=60, min_mag=5):
-	from obspy.fdsn.client import Client
-	client = Client("IRIS")
-	t = obspy.UTCDateTime(timestamp)
-	catalog = client.get_events(starttime=t-twin, endtime=t+twin, minmagnitude=min_mag)
-	return catalog[0]
-
-
-def calc_geodetics(eq, station):
-	eq_origin = eq.preferred_origin()
-	eq_lon, eq_lat = eq_origin.longitude.real, eq_origin.latitude.real
-	stat_lon, stat_lat = station.longitude.real, station.latitude.real
-	dist, az, backaz = obspy.core.util.geodetics.gps2DistAzimuth(eq_lat, eq_lon,
-															stat_lat, stat_lon)
-	return (dist, az, backaz)
-
-
-def calc_distance_degrees(eq, station):
-	#from obspy.geodetics import locations2degrees
-	from obspy.core.util.geodetics import locations2degrees
-
-	eq_origin = eq.preferred_origin()
-	eq_lon, eq_lat = eq_origin.longitude, eq_origin.latitude
-	stat_lon, stat_lat = station.longitude, station.latitude
-	distance = locations2degrees(eq_lat, eq_lon, stat_lat, stat_lon)
-	return distance
-
-
-def calc_arrival_time_and_inclination(eq, station, phase='S*', model="ak135"):
-	import warnings
-	from obspy.taup import getTravelTimes
-	#from obspy.taup import TauPyModel
-
-	with warnings.catch_warnings():
-		warnings.filterwarnings("ignore",category=DeprecationWarning)
-
-		#m = TauPyModel(model="ak135")
-		dist_degrees = calc_distance_degrees(eq, station)
-		eq_origin = eq.preferred_origin()
-		source_depth = eq_origin.depth / 1000.0
-		#arrivals = m.get_ray_paths(distance_in_degree=dist_degrees,
-		#	source_depth_in_km=source_depth)
-		arrivals = getTravelTimes(dist_degrees, source_depth, model=model)
-		#for arr in arrivals:
-		#	if 'S' in arr["phase_name"] or 's' in arr["phase_name"]:
-		#		print arr["phase_name"], arr["time"]
-
-		#[arrival] = [arr for arr in arrivals if arr.name == phase]
-		if phase[-1] == '*':
-			phase = phase[:-1]
-			fastest_arrival = None
-			for arr in arrivals:
-				if arr["phase_name"][:len(phase)] == phase:
-					if not fastest_arrival:
-						fastest_arrival = arr
-					elif arr["time"] < fastest_arrival["time"]:
-						fastest_arrival = arr
-			arrival = fastest_arrival
-		else:
-			[arrival] = [arr for arr in arrivals if arr["phase_name"] == phase]
-		print arrival["time"]
-		#arrival_time = eq_origin.time + arrival.time
-		arrival_time = eq_origin.time + arrival["time"]
-		return (arrival_time, arrival["take-off angle"])
-
-
 
 if __name__ == "__main__":
 	import pylab
@@ -266,8 +122,8 @@ if __name__ == "__main__":
 
 		## Compute FAS and RS
 		smooth = False
-		freqs, fas = get_fas(tr, smooth=smooth)
-		freqs, rs = get_rs_rvt(tr, smooth=smooth)
+		freqs, fas = ot.get_fas(tr, smooth=smooth)
+		freqs, rs = ot.get_rs_rvt(tr, smooth=smooth)
 
 		## Plot FAS vs RS
 		pylab.semilogx(freqs, fas, label="FAS")
@@ -311,43 +167,47 @@ if __name__ == "__main__":
 	event_timestamps = ["2017-08-02 07:15:13", "2017-04-24 21:38:28"]
 	event_durations = [30, 50]
 	#phases = ["Sn", "Sb"]
-	phases = ["S*", "S*"]
+	#phases = ["S*", "S*"]
+	phases = ["s", "S*"]
 	## Time difference between IRIS and Chilean catalog
 	time_corrections = [-0.98, -2.84]
 
-	station_ids = ["VA05", "MT02", "MT05", "FAR1"]
-	#station_ids = ["MT02"]
+	#station_ids = ["VA05", "MT02", "MT05", "FAR1"]
+	station_ids = ["FAR1"]
 	intensity_unit = 'ms2'
 
 	rs_spectra = {}
 	distances = {}
+	depths = {}
 	overwrite = False
 
 	for e, timestamp in enumerate(event_timestamps):
-		print timestamp
+		print(timestamp)
 		date = timestamp[:10]
 		rs_spectra[timestamp] = {}
 		distances[timestamp] = {}
-		event_info = download_event_info(timestamp)
-		#print event_info
+		depths[timestamp] = {}
+		event_info = ot.download_event_info(timestamp)
+		#print(event_info)
+		depths[timestamp] = event_info.preferred_origin().depth / 1000.0
 
 		for station_id in station_ids:
-			print station_id
+			print(station_id)
 
 			## CSV file
 			folder = get_stream_folder(timestamp, station_id)
 			#csv_filename = "%s-%s-%s_RS.csv" % (event, station_id, channel)
-			rs_filename = "%s-%s-RS.csv" % (date, station_id)
+			rs_filename = "%s-%s-RS.csv" % (date.replace('-', ''), station_id)
 			rs_filespec = os.path.join(folder, rs_filename)
 
 			## Read station info
 			network = get_station_network(station_id)
-			inventory = download_station_metadata(station_id, network)
+			inventory = ot.download_station_metadata(station_id, network)
 			station_info = inventory.networks[0].stations[0]
 			#print station_info
 
 			## Compute distance and back-azimuth
-			dist, az, backaz = calc_geodetics(event_info, station_info)
+			dist, az, backaz = ot.calc_geodetics(event_info, station_info)
 			distances[timestamp][station_id] = dist
 
 			if overwrite or not os.path.exists(rs_filespec):
@@ -357,39 +217,44 @@ if __name__ == "__main__":
 				## units is available as trace.stats.response.instrument_sensitivity.input_units
 				stream.attach_response(inventory)
 				fig_filename = "%s_raw.png" % station_id
-				fig_filespec = os.path.join(folder, fig_filename)
+				#fig_filespec = os.path.join(folder, fig_filename)
+				fig_filespec = None
 				stream.plot(outfile=fig_filespec, size=(1680, 1024), dpi=100, number_of_ticks=10, type="normal")
 
 				## Isolate S-wave based on theoretical arrival time
-				arrival_time, inclination = calc_arrival_time_and_inclination(event_info, station_info, phase=phases[e])
+				arrival_time, inclination = ot.calc_arrival_time_and_inclination(event_info, station_info, phase=phases[e], verbose=True)
 				arrival_time += time_corrections[e]
-				print arrival_time, inclination
+				print(arrival_time, inclination)
 				fig_filename = "%s_S_phase.png" % station_id
-				fig_filespec = os.path.join(folder, fig_filename)
+				#fig_filespec = os.path.join(folder, fig_filename)
+				fig_filespec = None
 				stream.plot(outfile=fig_filespec, size=(1680, 1024), dpi=100, number_of_ticks=10, type="normal", starttime=arrival_time)
 				for tr in stream:
 					tr.trim(arrival_time, arrival_time + event_durations[e])
 
 				## Rotate to LQT components to separate P, SV and SH waves
 				## Note: RT and LQT rotation give same results for T component
-				print backaz
+				print(backaz)
 				#stream = stream.rotate('NE->RT', back_azimuth=backaz)
 				stream = stream.rotate('ZNE->LQT', back_azimuth=backaz, inclination=inclination)
 				fig_filename = "%s_S_rotated.png" % station_id
-				fig_filespec = os.path.join(folder, fig_filename)
+				#fig_filespec = os.path.join(folder, fig_filename)
+				fig_filespec = None
 				stream.plot(outfile=fig_filespec, size=(1680, 1024), dpi=100, number_of_ticks=10, type="normal")
 				stream = stream.select(component='T')
 
 				## Compute (FAS and) RS
 				tr = stream[0]
 				tr.detrend()
+				print("PGA: %.2f" % ot.get_pgm(tr))
 				smooth = False
-				#freqs, fas = get_fas(tr, smooth=smooth)
-				freqs, rs = get_rs_rvt(tr, smooth=smooth)
+				#freqs, fas = ot.get_fas(tr, smooth=smooth)
+				#freqs, rs = ot.get_rs_rvt(tr, smooth=smooth)
+				freqs, rs = ot.get_rs(tr)
 
 				## Export RS
 				rs = rshalib.result.ResponseSpectrum("", 1./freqs, "SA", rs, intensity_unit)
-				rs.export_csv(rs_filespec)
+				#rs.export_csv(rs_filespec)
 
 			else:
 				## Import RS from CSV file
@@ -400,18 +265,20 @@ if __name__ == "__main__":
 
 	## Compare RS for two events
 	for station_id in station_ids:
-		labels = ["Intraslab (M=5.5, 2017-08-02, d=%.1f km)",
-				"Megathrust (M=6.9, 2017-04-24, d=%.1f km)"]
+		labels = ["Intraslab (M=5.5, d=%.0f km, z=%.0f km)",
+				"Megathrust (M=6.9, d=%.0f km, z=%.0f km)"]
 		rs_list = []
 		for e, timestamp in enumerate(event_timestamps):
 			rs_list.append(rs_spectra[timestamp][station_id])
-			labels[e] %= (distances[timestamp][station_id] / 1000)
+			labels[e] %= (distances[timestamp][station_id] / 1000, depths[timestamp])
 
 		rs_coll = rshalib.result.UHSCollection(rs_list, labels=labels)
 		fig_filename = "%s_RS_comparison.png" % station_id
 		#fig_filespec = os.path.join(FOLDER, "accelerograms Chile 2017", fig_filename)
 		fig_filespec = None
-		rs_coll.plot(plot_freq=True, title="RS Comparison, station=%s" % station_id, fig_filespec=fig_filespec, amax=1.4, legend_location=2, intensity_unit=intensity_unit)
+		rs_coll.plot(plot_freq=True, title="RS Comparison, station=%s" % station_id, fig_filespec=fig_filespec, amax=2.5, legend_location=2, intensity_unit=intensity_unit)
+
+	exit()
 
 	## Compare RS for different stations
 	for timestamp in event_timestamps:
@@ -426,6 +293,6 @@ if __name__ == "__main__":
 		date = obspy.UTCDateTime(timestamp).date
 		fig_filename = "%s_RS_comparison.png" % date.isoformat()
 		fig_folder = os.path.split(get_stream_folder(timestamp, station_id))[0]
-		#fig_filespec = os.path.join(fig_folder, fig_filename)
-		fig_filespec = None
-		rs_coll.plot(plot_freq=True, title="RS Comparison, event=%s" % timestamp, fig_filespec=fig_filespec, amax=1.4, legend_location=2, intensity_unit=intensity_unit)
+		fig_filespec = os.path.join(fig_folder, fig_filename)
+		#fig_filespec = None
+		rs_coll.plot(plot_freq=True, title="RS Comparison, event=%s" % timestamp, fig_filespec=fig_filespec, amax=2.5, legend_location=2, intensity_unit=intensity_unit)
