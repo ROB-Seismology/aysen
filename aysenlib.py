@@ -4,7 +4,7 @@ import os
 import numpy as np
 import matplotlib
 import pylab
-from mapping.geotools.readGIS import read_GIS_file
+from mapping.geotools.read_gis import read_gis_file
 import mapping.layeredbasemap as lbm
 import openquake.hazardlib as oqhazlib
 import hazard.rshalib as rshalib
@@ -877,7 +877,7 @@ if __name__ == "__main__":
 
 	event = "SL-D"
 	filespec = os.path.join(gis_folder, "Polygons.shp")
-	recs = read_GIS_file(filespec)
+	recs = read_gis_file(filespec)
 	events = sorted(set([rec["Event"] for rec in recs]))
 	print events
 	(pe_thresholds, pe_site_models,
