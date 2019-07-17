@@ -13,7 +13,7 @@ from create_animated_gif import create_animated_gif
 
 
 
-fig_folder = os.path.join(project_folder, "Figures", "Sensitivity", "v5", "ResolutionPower")
+fig_folder = os.path.join(project_folder, "Figures", "Sensitivity", "v6", "ResolutionPower")
 
 
 ## Thresholds (depends on type of evidence)
@@ -93,7 +93,8 @@ exit()
 """
 
 ## Loop over IPEs
-for ipe_name in ipe_models:
+#for ipe_name in ipe_models[::2]:
+for ipe_name in ["BakunWentworth1997WithSigma"]:
 	print ipe_name
 	if ipe_name != "LogicTree":
 		trt_gsim_dict = {TRT: ipe_name}
@@ -179,13 +180,20 @@ for ipe_name in ipe_models:
 				all_probs.extend(probs)
 
 
-			## Compute resolution power
+			## Compute resolving power
+			## Normalize distances and magnitudes
 			distances = np.array(distances)
-			max_distance = 175. ## use same distance for each case!
+			max_distance = 175. ## use same max. distance for each case!
 			distances /= max_distance
 			mag_diffs = np.array(mag_diffs)
 			mag_diffs /= (fault_mags[-1] - fault_mags[0])
+			## Truncate normalized distances and magnitudes to reduce bias
+			## between center and extremities of the range
+			## (makes no real difference...)
+			#distances = np.minimum(distances, 0.75)
+			#mag_diffs = np.minimum(mag_diffs, 0.75)
 			dx = np.sqrt(0.5 * ((1-mag_diffs)**2 + (1-distances)**2))
+
 			#dx = np.sqrt(0.5 * (mag_diffs**2 + distances**2))
 			## Reduce impact of probabilities slightly larger than scenario prob
 			## for nearby ruptures with similar magnitude
