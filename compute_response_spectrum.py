@@ -4,6 +4,7 @@ import numpy as np
 import obspy
 
 import seismology.obspy_tools as ot
+import thirdparty.pyrotd as pyrotd
 
 
 FOLDER = r"E:\Home\_kris\Publications\2018 - Chile_Intraslab-Megathrust"
@@ -179,7 +180,7 @@ if __name__ == "__main__":
 	rs_spectra = {}
 	distances = {}
 	depths = {}
-	overwrite = False
+	overwrite = True
 
 	for e, timestamp in enumerate(event_timestamps):
 		print(timestamp)
@@ -206,7 +207,7 @@ if __name__ == "__main__":
 			station_info = inventory.networks[0].stations[0]
 			#print station_info
 
-			## Compute distance and back-azimuth
+			## Compute (horizontal) distance and back-azimuth
 			dist, az, backaz = ot.calc_geodetics(event_info, station_info)
 			distances[timestamp][station_id] = dist
 
@@ -219,7 +220,7 @@ if __name__ == "__main__":
 				fig_filename = "%s_raw.png" % station_id
 				#fig_filespec = os.path.join(folder, fig_filename)
 				fig_filespec = None
-				stream.plot(outfile=fig_filespec, size=(1680, 1024), dpi=100, number_of_ticks=10, type="normal")
+				#stream.plot(outfile=fig_filespec, size=(1680, 1024), dpi=100, number_of_ticks=10, type="normal")
 
 				## Isolate S-wave based on theoretical arrival time
 				arrival_time, inclination = ot.calc_arrival_time_and_inclination(event_info, station_info, phase=phases[e], verbose=True)
@@ -228,7 +229,7 @@ if __name__ == "__main__":
 				fig_filename = "%s_S_phase.png" % station_id
 				#fig_filespec = os.path.join(folder, fig_filename)
 				fig_filespec = None
-				stream.plot(outfile=fig_filespec, size=(1680, 1024), dpi=100, number_of_ticks=10, type="normal", starttime=arrival_time)
+				#stream.plot(outfile=fig_filespec, size=(1680, 1024), dpi=100, number_of_ticks=10, type="normal", starttime=arrival_time)
 				for tr in stream:
 					tr.trim(arrival_time, arrival_time + event_durations[e])
 
@@ -240,7 +241,7 @@ if __name__ == "__main__":
 				fig_filename = "%s_S_rotated.png" % station_id
 				#fig_filespec = os.path.join(folder, fig_filename)
 				fig_filespec = None
-				stream.plot(outfile=fig_filespec, size=(1680, 1024), dpi=100, number_of_ticks=10, type="normal")
+				#stream.plot(outfile=fig_filespec, size=(1680, 1024), dpi=100, number_of_ticks=10, type="normal")
 				stream = stream.select(component='T')
 
 				## Compute (FAS and) RS
@@ -250,10 +251,20 @@ if __name__ == "__main__":
 				smooth = False
 				#freqs, fas = ot.get_fas(tr, smooth=smooth)
 				#freqs, rs = ot.get_rs_rvt(tr, smooth=smooth)
+				#tr2 = stream[1]
+				#tr2.detrend()
+				#freqs, rs = ot.get_geometric_mean_rs(tr, tr2)
 				freqs, rs = ot.get_rs(tr)
+				#freqs = freqs[::5]
+				#rs = pyrotd.calc_spec_accels(1. / tr.stats.sampling_rate, tr.data, freqs).spec_accel
+
+				## Remove zero frequency
+				freqs = freqs[1:]
+				rs = rs[1:]
 
 				## Export RS
-				rs = rshalib.result.ResponseSpectrum("", 1./freqs, "SA", rs, intensity_unit)
+				periods = 1./freqs
+				rs = rshalib.result.ResponseSpectrum("", periods, "SA", rs, intensity_unit)
 				#rs.export_csv(rs_filespec)
 
 			else:
@@ -267,16 +278,20 @@ if __name__ == "__main__":
 	for station_id in station_ids:
 		labels = ["Intraslab (M=5.5, d=%.0f km, z=%.0f km)",
 				"Megathrust (M=6.9, d=%.0f km, z=%.0f km)"]
+		colors = ['b', 'r']
 		rs_list = []
 		for e, timestamp in enumerate(event_timestamps):
 			rs_list.append(rs_spectra[timestamp][station_id])
 			labels[e] %= (distances[timestamp][station_id] / 1000, depths[timestamp])
 
-		rs_coll = rshalib.result.UHSCollection(rs_list, labels=labels)
+		rs_coll = rshalib.result.UHSCollection(rs_list, labels=labels, colors=colors)
 		fig_filename = "%s_RS_comparison.png" % station_id
-		#fig_filespec = os.path.join(FOLDER, "accelerograms Chile 2017", fig_filename)
-		fig_filespec = None
-		rs_coll.plot(plot_freq=True, title="RS Comparison, station=%s" % station_id, fig_filespec=fig_filespec, amax=2.5, legend_location=2, intensity_unit=intensity_unit)
+		fig_filespec = os.path.join(FOLDER, "accelerograms Chile 2017", fig_filename)
+		#fig_filespec = None
+		title = "RS Comparison, station=%s" % station_id
+		rs_coll.plot(plot_freq=False, title=title, fig_filespec=fig_filespec,
+					amax=2.5, legend_location=1, intensity_unit=intensity_unit,
+					Tmin=0.02, Tmax=10)
 
 	exit()
 
@@ -291,8 +306,8 @@ if __name__ == "__main__":
 
 		rs_coll = rshalib.result.UHSCollection(rs_list, labels=labels)
 		date = obspy.UTCDateTime(timestamp).date
-		fig_filename = "%s_RS_comparison.png" % date.isoformat()
+		fig_filename = "%s_RSmean_comparison.png" % date.isoformat()
 		fig_folder = os.path.split(get_stream_folder(timestamp, station_id))[0]
 		fig_filespec = os.path.join(fig_folder, fig_filename)
 		#fig_filespec = None
-		rs_coll.plot(plot_freq=True, title="RS Comparison, event=%s" % timestamp, fig_filespec=fig_filespec, amax=2.5, legend_location=2, intensity_unit=intensity_unit)
+		rs_coll.plot(plot_freq=False, title="RS Comparison, event=%s" % timestamp, fig_filespec=fig_filespec, amax=2.5, legend_location=2, intensity_unit=intensity_unit)
