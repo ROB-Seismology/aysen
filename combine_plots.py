@@ -418,7 +418,7 @@ def plot_resolution_power_maps_by_mag():
 		row = m // num_cols
 		col = (m % num_cols)
 		print col, row
-		fig_folder = os.path.join(base_fig_folder, "Sensitivity", "v5", "ResolutionPower")
+		fig_folder = os.path.join(base_fig_folder, "Sensitivity", "v6", "ResolutionPower")
 		fig_filename = "ResPow_%s_MMI=%.1f_M=%.2f.png"
 		fig_filename %= (ipe_name, threshold_mmi, mag)
 		fig_filespec = os.path.join(fig_folder, fig_filename)
@@ -428,9 +428,9 @@ def plot_resolution_power_maps_by_mag():
 		ax.imshow(img)
 		ax.set_title(sublabels[m], loc='left', fontsize=13)
 
-		ax.text(0.46, 0, "Resolving Power", transform=ax.transAxes,
-			ha="center", va="bottom", size=11.5,
-			bbox=dict(facecolor='w', edgecolor='none', boxstyle='square, pad=0'))
+		#ax.text(0.46, 0, "Resolving Power", transform=ax.transAxes,
+		#	ha="center", va="bottom", size=11.5,
+		#	bbox=dict(facecolor='w', edgecolor='none', boxstyle='square, pad=0'))
 
 		ax.set_axis_off()
 
@@ -459,7 +459,7 @@ def plot_resolution_power_maps_by_ipe_and_lower_mmi():
 	for i, ipe_name in enumerate(ipe_names):
 		col = (i % num_cols)
 		print col, row
-		fig_folder = os.path.join(base_fig_folder, "Sensitivity", "v5", "ResolutionPower")
+		fig_folder = os.path.join(base_fig_folder, "Sensitivity", "v6", "ResolutionPower")
 		fig_filename = "ResPow_%s_MMI=%.1f_M=%.2f.png"
 		fig_filename %= (ipe_name, threshold_mmi, mag)
 		fig_filespec = os.path.join(fig_folder, fig_filename)
@@ -468,9 +468,9 @@ def plot_resolution_power_maps_by_ipe_and_lower_mmi():
 		ax = pylab.subplot(gs[row, col])
 		ax.imshow(img)
 		ax.set_title(sublabels[i], loc='left', fontsize=13)
-		ax.text(0.46, 0, "Resolving Power", transform=ax.transAxes,
-			ha="center", va="bottom", size=11.5,
-			bbox=dict(facecolor='w', edgecolor='none', boxstyle='square, pad=0'))
+		#ax.text(0.46, 0, "Resolving Power", transform=ax.transAxes,
+		#	ha="center", va="bottom", size=11.5,
+		#	bbox=dict(facecolor='w', edgecolor='none', boxstyle='square, pad=0'))
 		ax.set_axis_off()
 
 	mags = [5.72, 6.48]
@@ -481,7 +481,7 @@ def plot_resolution_power_maps_by_ipe_and_lower_mmi():
 	for m, mag in enumerate(mags):
 		col = (m % num_cols)
 		print col, row
-		fig_folder = os.path.join(base_fig_folder, "Sensitivity", "v5", "ResolutionPower")
+		fig_folder = os.path.join(base_fig_folder, "Sensitivity", "v6", "ResolutionPower")
 		fig_filename = "ResPow_%s_MMI=%.1f_M=%.2f.png"
 		fig_filename %= (ipe_name, threshold_mmi, mag)
 		fig_filespec = os.path.join(fig_folder, fig_filename)
@@ -490,9 +490,9 @@ def plot_resolution_power_maps_by_ipe_and_lower_mmi():
 		ax = pylab.subplot(gs[row, col])
 		ax.imshow(img)
 		ax.set_title(sublabels[m+2], loc='left', fontsize=13)
-		ax.text(0.46, 0, "Resolving Power", transform=ax.transAxes,
-			ha="center", va="bottom", size=11.5,
-			bbox=dict(facecolor='w', edgecolor='none', boxstyle='square, pad=0'))
+		#ax.text(0.46, 0, "Resolving Power", transform=ax.transAxes,
+		#	ha="center", va="bottom", size=11.5,
+		#	bbox=dict(facecolor='w', edgecolor='none', boxstyle='square, pad=0'))
 		ax.set_axis_off()
 
 	out_filename = "Sensitivity_respow_maps_by_ipe_and_lower_mmi.png"
@@ -500,6 +500,84 @@ def plot_resolution_power_maps_by_ipe_and_lower_mmi():
 	pylab.savefig(out_filespec, dpi=200)
 
 
+def plot_station_response_spectra(suffix="comparison"):
+	"""
+	:param suffix:
+		str, "comparison" or GMPE name
+	"""
+	fig_folder = r"E:\Home\_kris\Publications\2018 - Chile_Intraslab-Megathrust\accelerograms Chile 2017"
+
+	height, width = 23.3 / 2.54, 29.6 / 2.54
+	#num_cols, num_rows = 1, 4
+	num_cols, num_rows = 4, 1
+	FIGSIZE = (width * num_cols, height * num_rows)
+	pylab.rcParams['figure.figsize'] = FIGSIZE
+
+	sublabels = ['a) ', 'b) ', 'c) ', 'd) ']
+
+	fig = pylab.figure()
+	gs = gridspec.GridSpec(num_rows, num_cols)
+	gs.update(wspace=0, hspace=0.1)
+
+	stations = ["FAR1", "MT05", "MT02", "VA05"]
+
+	#col = 0
+	row = 0
+	for i, station in enumerate(stations):
+		#row = i
+		col = len(stations) - 1 - i
+		print col, row
+		fig_filename = "%s_RS_%s.png" % (station, suffix)
+		fig_filespec = os.path.join(fig_folder, fig_filename)
+		img = pylab.imread(fig_filespec)
+		img = getAutoCroppedImage(img)
+		ax = pylab.subplot(gs[row, col])
+		ax.imshow(img)
+		ax.set_title(sublabels[i], loc='left', fontsize=16)
+		ax.set_axis_off()
+
+	out_filename = "Transect_RS_%s.png" % suffix
+	#out_filespec = os.path.join(fig_folder, out_filename)
+	out_filespec = os.path.join('C:\\Temp', out_filename)
+	pylab.savefig(out_filespec, dpi=200)
+
+
+def plot_response_spectra_vs_magnitude():
+	fig_folder = r"E:\Home\_kris\Publications\2018 - Chile_Intraslab-Megathrust\accelerograms Chile 2017"
+
+	height, width = 23.3 / 2.54, 29.6 / 2.54
+	num_cols, num_rows = 2, 1
+	FIGSIZE = (width * num_cols, height * num_rows)
+	pylab.rcParams['figure.figsize'] = FIGSIZE
+
+	sublabels = ['a) ', 'b) ', 'c) ', 'd) ']
+
+	fig = pylab.figure()
+	gs = gridspec.GridSpec(num_rows, num_cols)
+	gs.update(wspace=0.1, hspace=0)
+
+	trts = ["intraslab", "megathrust"]
+
+	row = 0
+	for i, trt in enumerate(trts):
+		col = i
+		print col, row
+		fig_filename = "FAR1_RS_vs_%s_magnitude.PNG" % trt
+		fig_filespec = os.path.join(fig_folder, fig_filename)
+		img = pylab.imread(fig_filespec)
+		img = getAutoCroppedImage(img)
+		ax = pylab.subplot(gs[row, col])
+		ax.imshow(img)
+		ax.set_title(sublabels[i], loc='left', fontsize=16)
+		ax.set_axis_off()
+
+	out_filename = "FAR1_RS_vs_magnitude.PNG"
+	out_filespec = os.path.join(fig_folder, out_filename)
+	pylab.savefig(out_filespec, dpi=200)
+
+
 
 if __name__ == "__main__":
-	plot_resolution_power_maps_by_mag()
+	plot_station_response_spectra("comparison")
+	#plot_station_response_spectra("IdiniEtAl2017")
+	#plot_response_spectra_vs_magnitude()
