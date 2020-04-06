@@ -37,120 +37,41 @@ def read_fault_info(fault_id, num_sections):
 				return flt
 
 
-if __name__ == "__main__":
-	## Map parameters
-	#map_region = (-74, -72, -46.25, -44.75)
-	#graticule_interval = (1, 0.5)
-	#map_region = (-73.5, -72.5, -45.675, -45.175)
-	#graticule_interval = (0.5, 0.25)
-	#map_region = (-73.25, -72.75, -45.575, -45.2)
-	map_region = (-73.22, -72.77, -45.56, -45.22)
-	graticule_interval = (0.2, 0.1)
-
-	## Read fault model
-	#for flt in read_fault_source_model(fault_filespec):
-	#	print flt.source_id, flt.name
-	#exit()
+def plot_okada_map(U, component, wavelength, output="displacement", map_region=[],
+					fault_gis_filespec="", elastic_fault=None, fig_filespec=None):
 	"""
-	#flt_id = "2#01+2#02+2#03+2#04+2#05"
-	flt_id = "0#05+0#06+0#07+0#08"
-	num_sections = len(flt_id.split('+'))
-	flt = read_fault_info(flt_id, num_sections)
+	Plot map of surface deformation modelled with Okada
+
+	:param U:
+		instance of :class:`eqgeology.faultlib.okada.OkadaDisplacementField`,
+		modeled displacement field
+	:param component:
+		str or tuple, component specification
+	:param output:
+		str, "displacement", "phase" or "vector"
+		(default: "displacement")
+	:param map_region:
+		(lonmin, lonmax, latmin, latmax) tuple
+		(default: [], will use bounding box of :param:`U`)
+	:param fault_gis_filespec:
+		str, full path to GIS file containing background faults
+		(default: "")
+	:param elastic_fault:
+		instance of :class:`eqgeology.faultlib.okada.ElasticFault`,
+		fault rupture used to calculate displacement field
+		(default: None)
+	:param fig_filespec:
+		str, full path to output file
+		(default: None)
 	"""
 
-	gis_filespec = os.path.join(gis_folder, "InSAR_fault_rupture.TAB")
-	flt = read_fault_source_model(gis_filespec, characteristic=False).sources[1]
-	#flt.reverse_trace()
-	num_sections = 15
-
-
-	## Override geometry (dip, depth)
-	flt.dip = 88
-	flt.lower_seismogenic_depth = 14
-	flt.rake = 176
-	print flt.get_dip_direction()
-
-	subfaults = flt.get_subfaults(num_sections, 1)[:,0]
-
-	## Override kinematics (rake, mu)
-	## Note: dip would only work if fault is not subdivided downdip
-	for subflt in subfaults:
-		subflt.mu = 3E+10
-		#subflt.rake = 176
-		subflt.rake = 145
-		#subflt.calculate_geometry()
-
-	## Set slip distribution
-	mag = 6.3
-	elastic_fault = okada.create_fault(subfaults)
-	elastic_fault.set_slip_from_magnitude(mag)
-	elastic_fault.taper_slip()
-	for s, subflt in enumerate(elastic_fault.subfaults):
-		print s, subflt.slip, subflt.calc_magnitude()
-	print elastic_fault.calc_magnitude()
-
-	## Compute surface deformation
-	num_pts = 101
-	#num_pts = 25
-	x = np.linspace(map_region[0], map_region[1], num_pts)
-	y = np.linspace(map_region[-2], map_region[-1], num_pts)
-	X, Y = np.meshgrid(x, y)
-	U = elastic_fault.okada(X, Y)
-
-
-	## InSAR parameters
-	## wavelength (in m)
-	wavelength = 0.2360571
-	## Azimuth (satellite looks right)
-	insar_az = -11.7 + 90
-	## Off-nadir angle
-	off_nadir = 34.3
-
-	## Take component
-	#component = 'E'
-	## Along-strike
-	#azimuth = np.round(elastic_fault.subfaults[0].strike)
-	#elevation_angle = 0
-	#comp_string = "AS"
-	## LOS (satellite looks right)
-	azimuth = insar_az + 180
-	elevation_angle = 90 - off_nadir
-	#azimuth, elevation_angle = 0, 75
-	component = (azimuth, elevation_angle, "up")
-
-	dZ = U.get_component(component)
-	dzmax = dZ.range()
-	print U.U.max(), dzmax
-
-	## Test inverting for slip distribution
-	original_slip_distribution = [subflt.slip for subflt in elastic_fault.subfaults]
-	#elastic_fault.set_slip_from_magnitude(mag-0.5)
-	for subflt in elastic_fault.subfaults:
-		subflt.slip = 0
-	phase_info = None
-	D_obs = dZ.Z
-	#phase_info = (wavelength, "degrees")
-	#D_obs = dZ.get_unwrapped_phase_difference(*phase_info)
-	inverted_slip_distribution = elastic_fault.invert_slip_distribution(X, Y, D_obs,
-									component, max_slip=2, phase_info=phase_info)
-	import pylab
-	pylab.plot(original_slip_distribution, label="Original")
-	pylab.plot(inverted_slip_distribution, label="Inverted")
-	pylab.legend()
-	pylab.show()
-
-	exit()
-
-
-	## Plot
 	from clawpack.visclaw import colormaps
 	#import cmocean
 	import matplotlib
 
-	#output = "displacement"
-	output = "phase"
-	#output = "vector"
-	#output = None
+	dZ = U.get_component(component)
+	dzmax = dZ.range()
+	print U.U.max(), dzmax
 
 	layers = []
 
@@ -187,15 +108,16 @@ if __name__ == "__main__":
 		elif output == "phase":
 			from matplotlib.colors import LinearSegmentedColormap
 			delta_phi = dZ.get_wrapped_phase_difference(wavelength=wavelength,
-											measure="degrees")
+											unit="degrees")
 			grid_data = lbm.MeshGridData(dZ.X, dZ.Y, delta_phi)
 			#color_map = cmocean.cm.phase
 			#color_map = matplotlib.cm.hsv
 			colors = ['b', 'r', 'yellow', 'c', 'b']
 			color_map = LinearSegmentedColormap.from_list("InSAR phase", colors, N=256)
-			color_map_theme = lbm.ThematicStyleColormap(color_map=color_map, vmin=0, vmax=360, alpha=0.5)
+			color_map = lbm.cm.adjust_cmap_saturation(color_map, -0.40, colorspace='HSV')
+			color_map_theme = lbm.ThematicStyleColormap(color_map=color_map, vmin=-180, vmax=180)
 			colorbar_title = "%s phase (degrees)" % dZ.comp_label
-			contour_levels = [0.,360.]
+			contour_levels = [-180.,180.]
 			contour_line_style = lbm.LineStyle(label_style=None)
 
 		## Mask oceans
@@ -246,13 +168,14 @@ if __name__ == "__main__":
 		#layers.append(layer)
 
 	text_box = ""
-	if output:
-		text_box = u"Length: %.1f km\n" % flt.get_length()
-		text_box += "Depth: %.1f km\n" % flt.lower_seismogenic_depth
-		text_box += u"Dip: %d°\n" % flt.dip
-		text_box += u"Rake: %d°\n" % flt.rake
+	if output and elastic_fault:
+		subflt = elastic_fault.subfaults[0]
+		text_box = u"Length: %.1f km\n" % (elastic_fault.get_length() / 1000)
+		#text_box += "Depth: %.1f km\n" % flt.lower_seismogenic_depth
+		text_box += u"Dip: %d°\n" % subflt.dip
+		text_box += u"Rake: %d°\n" % subflt.rake
 		#text_box += "Slip: %s m\n" % '/'.join(["%.2f" % subflt.slip for subflt in elastic_fault.subfaults])
-		text_box += "Slip: %.2f m\n" % elastic_fault.calc_average_slip()
+		text_box += "Mean slip: %.2f m\n" % elastic_fault.calc_average_slip()
 		text_box += "Magnitude: %.1f\n" % elastic_fault.calc_magnitude()
 		text_box += "Displacement: %.2f/%.2f m" % (dZ.min(), dZ.max())
 
@@ -269,20 +192,29 @@ if __name__ == "__main__":
 	#layers.append(layer)
 
 	## Faults
-	gis_filename = "LOFZ_breukenmodel.shp"
-	gis_filespec = os.path.join(gis_folder, gis_filename)
-	data = lbm.GisData(gis_filespec)
+	data = lbm.GisData(fault_gis_filespec)
 	style = lbm.LineStyle(line_color='purple', line_width=1.5)
 	layer = lbm.MapLayer(data, style, legend_label="Faults")
 	layers.append(layer)
 
-	data = flt.to_lbm_data()
-	style = lbm.LineStyle(line_color='m', line_width=3)
-	layer = lbm.MapLayer(data, style, legend_label="Faults")
-	layers.append(layer)
+	if elastic_fault:
+		top_subfaults = elastic_fault.get_top_subfaults()
+		lons, lats = [], []
+		for subflt in top_subfaults:
+			A, B, C, D = subflt.corners
+			lons.append([D[0], A[0]])
+			lats.append([D[1], A[1]])
+		data = lbm.MultiLineData(lons, lats)
+		#data = flt.to_lbm_data()
+		style = lbm.LineStyle(line_color='m', line_width=3)
+		layer = lbm.MapLayer(data, style, legend_label="Faults")
+		layers.append(layer)
 
 	legend_style = None
 	title = ""
+	graticule_interval = (0.2, 0.1)
+	if not map_region:
+		map_region = [U.X.min(), U.X.max(), U.Y.min(), U.Y.max()]
 	map = lbm.LayeredBasemap(layers, title, projection="merc", region=map_region,
 			title_style=lbm.DefaultTitleTextStyle, graticule_style=lbm.GraticuleStyle(),
 			graticule_interval=graticule_interval, resolution='f',
@@ -296,12 +228,181 @@ if __name__ == "__main__":
 							background_color='white', border_pad=0.4, border_color='k')
 		map.draw_text_box(pos, text_box, text_style)
 
-	fig_filespec = None
-	fig_filename = "okada_test_%s_%s.png" % (output, dZ.comp_label)
-	#fig_filespec = os.path.join(fig_folder, fig_filename)
 
 	if fig_filespec:
 		dpi = 200
 	else:
 		dpi = 90
 	map.plot(fig_filespec=fig_filespec, dpi=dpi)
+
+
+
+if __name__ == "__main__":
+	## Map parameters
+	#map_region = (-74, -72, -46.25, -44.75)
+	#graticule_interval = (1, 0.5)
+	#map_region = (-73.5, -72.5, -45.675, -45.175)
+	#graticule_interval = (0.5, 0.25)
+	#map_region = (-73.25, -72.75, -45.575, -45.2)
+	map_region = (-73.22, -72.77, -45.56, -45.22)
+
+	## Read fault model
+	#for flt in read_fault_source_model(fault_filespec):
+	#	print flt.source_id, flt.name
+	#exit()
+	"""
+	#flt_id = "2#01+2#02+2#03+2#04+2#05"
+	flt_id = "0#05+0#06+0#07+0#08"
+	num_sections = len(flt_id.split('+'))
+	flt = read_fault_info(flt_id, num_sections)
+	"""
+
+	gis_filespec = os.path.join(gis_folder, "InSAR_fault_rupture.TAB")
+	src_model = read_fault_source_model(gis_filespec, characteristic=False)
+
+	slip_distribution = {0: [0.1, 0.2, 0.3, 0.4, 0.5, 0.5],
+						1: [0.01, 0.1, 0.1, 0.15, 0.2, 0.25],
+						2: [0.75, 0.75, 0.5, 0.25, 0.15, 0.1],
+						3: [0.2]*5
+					}
+
+	#slip_distribution = {0: [0.4]*6, 1:[0.2]*6, 2: [0.6]*6, 3: [0.1]*5}
+
+	elastic_faults = []
+	#flt_idxs = [0, 1, 2, 3]
+	flt_idxs = [0, 2]
+	for flt_idx in flt_idxs:
+		flt = src_model.sources[flt_idx]
+		#flt.reverse_trace()
+
+		## Override geometry (dip, depth, rake)
+		#flt.dip = 88
+		flt.dip = 90
+		flt.lower_seismogenic_depth = 14
+		flt.rake = 176
+		#if flt_idx == 3:
+		#	flt.rake = -4
+		print flt.get_dip_direction()
+
+		#flt.mfd.min_mag = 5.0
+		#flt.plot_rupture_bounds_3d(flt.get_ruptures_Poisson())
+		#exit()
+
+		section_length = 1.5
+		num_sections = int(round(flt.get_length() / section_length))
+		subfaults = flt.get_subfaults(num_sections, 1, rigidity=3E+10)
+		print subfaults.shape
+
+		## Override kinematics (rake, mu)
+		## Note: dip would only work if fault is not subdivided downdip
+		for subflt in subfaults.flatten():
+			#subflt.rake = 176
+			subflt.rake = 180 - (28 - subflt.strike)
+
+		elastic_fault = okada.create_fault(subfaults)
+
+		## Set slip distribution
+		for s, slip in enumerate(slip_distribution[flt_idx]):
+			elastic_fault.subfaults[s].slip = slip
+
+		elastic_fault.subfaults = list(elastic_fault.subfaults)
+		elastic_faults.append(elastic_fault)
+
+	elastic_fault = elastic_faults[0]
+	for ef in elastic_faults[1:]:
+		elastic_fault.subfaults.extend(ef.subfaults)
+
+	## Set slip distribution
+	mag = 6.3
+	#elastic_fault.set_slip_from_magnitude(mag)
+	#elastic_fault.taper_slip()
+	for s, subflt in enumerate(elastic_fault.subfaults):
+		print s, subflt.slip, subflt.calc_magnitude(), subflt.strike, subflt.rake
+	print elastic_fault.calc_magnitude()
+
+	## Compute moment tensor
+	mt = elastic_fault.get_moment_tensor()
+	mt.plot_text()
+	print(mt.getMW())
+	exit()
+
+	elastic_fault.plot_3D()
+	#exit()
+
+	## Compute surface deformation
+	num_pts = 101
+	#num_pts = 25
+	x = np.linspace(map_region[0], map_region[1], num_pts)
+	y = np.linspace(map_region[-2], map_region[-1], num_pts)
+	X, Y = np.meshgrid(x, y)
+	U = elastic_fault.okada(X, Y)
+
+
+	## InSAR parameters
+	## wavelength (in m)
+	wavelength = 0.2360571
+	## Azimuth (satellite looks right)
+	insar_az = -11.7 + 90
+	## Off-nadir angle
+	off_nadir = 34.3
+
+	## Select component
+	#component = 'E'
+	## Along-strike
+	#azimuth = np.round(elastic_fault.subfaults[0].strike)
+	#elevation_angle = 0
+	#comp_string = "AS"
+	## LOS (satellite looks right)
+	azimuth = insar_az + 180
+	elevation_angle = 90 - off_nadir
+	#azimuth, elevation_angle = 0, 75
+	component = (azimuth, elevation_angle, "up")
+
+
+	## Plot
+	#output = "displacement"
+	output = "phase"
+	#output = "vector"
+	#output = None
+
+	fault_gis_filename = "LOFZ_breukenmodel.shp"
+	fault_gis_filespec = os.path.join(gis_folder, fault_gis_filename)
+
+	fig_filespec = None
+	dZ = U.get_component(component)
+	fig_filename = "okada_test_%s_%s.png" % (output, dZ.comp_label)
+	#fig_filespec = os.path.join(fig_folder, fig_filename)
+
+	plot_okada_map(U, component, wavelength, output=output, map_region=map_region,
+					fault_gis_filespec=fault_gis_filespec, elastic_fault=elastic_fault,
+					fig_filespec=fig_filespec)
+
+	exit()
+
+	## Test inverting for slip distribution
+	original_slip_distribution = [subflt.slip for subflt in elastic_fault.subfaults]
+	#elastic_fault.set_slip_from_magnitude(mag-0.5)
+	for subflt in elastic_fault.subfaults:
+		subflt.slip = 0
+	#phase_info = None
+	#D_obs = dZ.Z
+	phase_info = (wavelength, "degrees")
+	D_obs = dZ.get_wrapped_phase_difference(*phase_info)
+
+	## Apply mask
+	grid_data = lbm.MeshGridData(X, Y, D_obs)
+	pg_gis_file = os.path.join(fig_folder, "insar_reliable_outline.TAB")
+	gis_data = lbm.GisData(pg_gis_file)
+	_, _, pg_data = gis_data.get_data()
+	grid_data.mask_polygons(pg_data, inside=False)
+	D_obs = grid_data.values
+
+	inverted_slip_distribution = elastic_fault.invert_slip_distribution(X, Y, D_obs,
+									component, max_slip=2, phase_info=phase_info)
+	import pylab
+	pylab.plot(original_slip_distribution, label="Original")
+	pylab.plot(inverted_slip_distribution, label="Inverted")
+	pylab.legend()
+	pylab.show()
+
+
