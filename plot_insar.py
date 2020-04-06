@@ -60,7 +60,15 @@ layer = lbm.MapLayer(data, style)
 ## Wrapped phase
 if output == "phase":
 	grd_file = os.path.join(fig_folder, "filt_topophase.mph.vrt")
-	grid_data = lbm.GdalRasterData(grd_file, band_nr=2, down_sampling=4)
+	grid_data = lbm.GdalRasterData(grd_file, band_nr=2, down_sampling=2)
+	grid_data.apply_bbox((-73.2, -45.5, -73.0, -45.2))
+	grid_data = grid_data.to_mesh_grid()
+
+	## Apply mask
+	pg_gis_file = os.path.join(fig_folder, "insar_reliable_outline.TAB")
+	gis_data = lbm.GisData(pg_gis_file)
+	_, _, pg_data = gis_data.get_data()
+	grid_data.mask_polygons(pg_data, inside=False)
 
 	#color_map = matplotlib.cm.jet
 	#color_map_theme = lbm.ThematicStyleColormap(color_map=color_map, vmin=0, vmax=2e+6)
