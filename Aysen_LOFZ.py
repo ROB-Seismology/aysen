@@ -81,7 +81,8 @@ if __name__ == "__main__":
 	grid_outline = [-74, -71, -46.35, -44.85]
 	#grid_spacing = (0.1, 0.1)
 	grid_spacing = (1./60, 1./60)
-	soil_site_model = None
+	site_model = rshalib.site.GenericSiteModel.from_grid_spec(grid_outline,
+																grid_spacing)
 
 
 	## Read observed intensities
@@ -100,7 +101,7 @@ if __name__ == "__main__":
 				except:
 					pass
 				else:
-					site = rshalib.site.SHASite(lon, lat, name=name)
+					site = rshalib.site.GenericSite(lon, lat, name=name)
 					observation_sites.append(site)
 					observed_intensities.append(mmi)
 
@@ -117,8 +118,7 @@ if __name__ == "__main__":
 		print("Computing ground-motion maps...")
 		model_name = "Aysen Fjord"
 		dsha_model = rshalib.shamodel.DSHAModel(model_name, pt_src_model, gmpe_system_def,
-						grid_outline=grid_outline, grid_spacing=grid_spacing,
-						soil_site_model=soil_site_model, imt_periods=imt_periods,
+						site_model=site_model, imt_periods=imt_periods,
 						truncation_level=truncation_level, integration_distance=integration_distance)
 
 		#correlation_model = oqhazlib.correlation.JB2009CorrelationModel(vs30_clustering=True)
@@ -137,7 +137,7 @@ if __name__ == "__main__":
 			#norm = LinearNorm(vmin=0, vmax=12)
 			#title = "%s, Mw=%s, %s" % (date, MW, gmpe_name)
 			title = ""
-			hm = uhs_field.getHazardMap(period_spec=T)
+			hm = uhs_field.get_hazard_map(period_spec=T)
 			#map zonder kleuren
 			#hm.export_GeoTiff("raster.tiff", num_cells = 100)
 			colorbar_style = lbm.ColorbarStyle(format="%.1f", title="MMI", ticks=range(3, 10, 1))
@@ -205,7 +205,7 @@ if __name__ == "__main__":
 			#else:
 			#	gmpe_name = "AverageGMPE"
 
-			fig_filename = "%s_%s.PNG" % (event_ID, gmpe_name)
+			fig_filename = "%s_%s.pdf" % (event_ID, gmpe_name)
 			fig_filespec = os.path.join(fig_folder, fig_filename)
 			#fig_filespec = r"C:\Temp\Aysen_test.png"
 			#fig_filespec = None

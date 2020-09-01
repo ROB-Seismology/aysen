@@ -3,7 +3,7 @@ import numpy as np
 import scipy.stats
 import openquake.hazardlib as oqhazlib
 import hazard.rshalib as rshalib
-from hazard.rshalib.gsim.gmpe import NhlibGMPE
+from hazard.rshalib.gsim import OqhazlibGMPE
 import pylab
 
 from aysenlib import (get_roman_intensity, project_folder)
@@ -23,7 +23,7 @@ fig_filename = "IPE_exceedance_prob.png"
 for ipe_name, color in zip(ipe_names, colors):
 	oq_ipe = oqhazlib.gsim.get_available_gsims()[ipe_name]()
 	[dist_metric] = oq_ipe.REQUIRES_DISTANCES
-	ipe = NhlibGMPE(ipe_name, "", dist_metric, 4, 9, 0, 300, "MW")
+	ipe = OqhazlibGMPE(ipe_name, "", dist_metric, 4, 9, 0, 300, "MW")
 	sctx, rctx, dctx, imt = ipe._get_contexts_and_imt(M, d, 0.1, 800, None, None, None, None, "strike-slip", "MMI", 0, 0.5)
 	median, sigma = oq_ipe.get_mean_and_stddevs(sctx, rctx, dctx, imt, [oqhazlib.const.StdDev.TOTAL])
 	#print sigma

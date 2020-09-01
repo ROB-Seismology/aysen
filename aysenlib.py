@@ -262,11 +262,11 @@ def polygon_to_site_model(polygon, name, polygon_discretization):
 			polygon = lbm.PolygonData(polygon.lons, polygon.lats)
 			centroid = polygon.get_centroid()
 			site = rshalib.site.SoilSite(centroid.lon, centroid.lat)
-			site_model = rshalib.site.SoilSiteModel(name, [site])
+			site_model = rshalib.site.SoilSiteModel([site], name)
 	else:
 		point = polygon
 		site = rshalib.site.SoilSite(point.longitude, point.latitude)
-		site_model = rshalib.site.SoilSiteModel(name, [site])
+		site_model = rshalib.site.SoilSiteModel([site], name)
 	return site_model
 
 
@@ -327,7 +327,7 @@ def read_evidence_site_info_from_gis(gis_filespec, event, polygon_discretization
 	pe_polygons, ne_polygons = [], []
 	pe_site_names, ne_site_names = [], []
 
-	for rec in read_GIS_file(gis_filespec):
+	for rec in read_gis_file(gis_filespec):
 		geom_type = rec["obj"].GetGeometryName()
 		if geom_type == "POLYGON":
 			obj = rec["obj"].GetGeometryRef(0)
@@ -389,7 +389,7 @@ def read_evidence_site_info_from_gis(gis_filespec, event, polygon_discretization
 def read_evidence_sites_from_gis(gis_filespec, polygon_discretization=5):
 	polygons = {}
 
-	for rec in read_GIS_file(gis_filespec):
+	for rec in read_gis_file(gis_filespec):
 		geom_type = rec["obj"].GetGeometryName()
 		if geom_type == "POLYGON":
 			obj = rec["obj"].GetGeometryRef(0)
@@ -441,7 +441,7 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 				if not plot_point_ruptures:
 					x.append(source.location.longitude)
 					y.append(source.location.latitude)
-					print x[-1], y[-1], values['mag'][-1], prob_max
+					print(x[-1], y[-1], values['mag'][-1], prob_max)
 				else:
 					## Not sure this is correct if fault is not vertical
 					## Point source ruptures
@@ -520,7 +520,7 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 	layers.append(layer)
 
 	## Sources
-	colorbar_style = lbm.ColorbarStyle(legend_label)
+	colorbar_style = lbm.ColorbarStyle(legend_label, format="%.1f")
 	#thematic_color = lbm.ThematicStyleGradient([1E-3, 1E-2, 1E-1, 1], "RdBu_r", value_key='prob', colorbar_style=colorbar_style)
 	#thematic_color = lbm.ThematicStyleGradient([0.01, 0.05, 0.125, 0.25, 0.5, 1], "RdBu_r", value_key='prob', colorbar_style=colorbar_style)
 	#thematic_color = lbm.ThematicStyleColormap("Reds", vmin=0.001, vmax=max_prob_color, value_key='prob', colorbar_style=colorbar_style, alpha=1)
@@ -617,7 +617,7 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 		text_style = lbm.TextStyle(font_size=font_size, horizontal_alignment='right',
 							vertical_alignment='bottom', multi_alignment='left',
 							background_color='w', border_color='k', border_pad=0.5)
-		map.draw_text_box(pos, text_box, text_style)
+		map.draw_text_box(pos, text_box, text_style, zorder=10000)
 
 	if fig_filespec:
 		dpi = 200
@@ -666,7 +666,8 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 		contour_line_style = lbm.LineStyle(line_pattern='--', line_color='w',
 										line_width=0.75, label_style=label_style)
 		grid_style = lbm.GridStyle(None, color_gradient=None, line_style=contour_line_style,
-									contour_levels=contour_levels, colorbar_style=None)
+									contour_levels=contour_levels, colorbar_style=None,
+									label_format="%.1f")
 		layer = lbm.MapLayer(grid_data, grid_style)
 		layers.append(layer)
 
@@ -810,7 +811,7 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 		text_style = lbm.TextStyle(font_size=14, horizontal_alignment='right',
 							vertical_alignment='bottom', multi_alignment='left',
 							background_color='w', border_color='k', border_pad=0.5)
-		map.draw_text_box(pos, text_box, text_style)
+		map.draw_text_box(pos, text_box, text_style, zorder=10000)
 
 	if fig_filespec:
 		map.plot(fig_filespec=fig_filespec, dpi=200)

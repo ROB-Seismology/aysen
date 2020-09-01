@@ -17,6 +17,19 @@ events = ['2007', 'SL-G', 'SL-F', 'SL-EF', 'SL-DE', 'SL-D', 'SL-CD', 'SL-C', 'SL
 #events = ['SL-EF', 'SL-DE', 'SL-A']
 #events = ["SL-A"]
 #events = events[:6]
+#events = events[6:]
+
+## Selected magnitudes for final figure in paper
+events_mags = {'2007': 6.28,
+				'SL-G': 5.72,
+				'SL-F': 6.48,
+				'SL-EF': 6.48,
+				'SL-DE': 6.28,
+				'SL-D': 5.13,
+				'SL-CD': 6.28,
+				'SL-C': 6.48,
+				'SL-B': 5.13,
+				'SL-A': 6.28}
 
 
 ## IPE names
@@ -39,7 +52,7 @@ strict_intersection = True
 ## Map parameters
 #map_region = (-74, -72, -46, -44.5)
 map_region = (-74, -72, -46.25, -44.8)
-output_format = "png"
+output_format = "pdf"
 
 
 ## Read fault source model
@@ -49,7 +62,7 @@ output_format = "png"
 dM = 0.25
 min_mag, max_mag = 6.0 - dM/2, 7.0
 fault_mags = np.arange(min_mag, max_mag, dM) + dM/2
-print fault_mags
+print(fault_mags)
 for M in fault_mags:
 	#fault_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel.shp")
 	fault_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel2.TAB")
@@ -69,7 +82,7 @@ for M, source_model in read_fault_source_model_as_network(fault_filespec, dM=dM)
 max_prob_dict = {}
 section_prob_dict = {}
 for event in events:
-	print event
+	print(event)
 	max_prob_dict[event] = {}
 	section_prob_dict[event] = {}
 
@@ -132,12 +145,12 @@ for event in events:
 							pe_thresholds, ne_site_models, ne_thresholds, truncation_level,
 							integration_distance_dict=integration_distance_dict,
 							strict_intersection=strict_intersection)
-		#print prob_dict
+		#print(prob_dict)
 		probs = np.array(prob_dict.values())
 		probs = probs[:, 0]
 		max_prob = probs.max()
 		max_prob_dict[event][ipe_name].append(max_prob)
-		print M, max_prob
+		print(M, max_prob)
 		for rup_name, prob in zip(prob_dict.keys(), probs):
 			for section in rup_name.split('+'):
 				if not section in section_prob_dict[event][ipe_name]:
@@ -164,27 +177,28 @@ for event in events:
 
 		## Colormaps: RdBu_r, YlOrRd, BuPu, RdYlBu_r, Greys
 		site_model_gis_file = os.path.join(gis_folder, "Polygons_v3.shp")
-		plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
-									map_region, plot_point_ruptures=True, colormap="RdYlBu_r",
-									title=title, text_box=text_box, site_model_gis_file=site_model_gis_file,
-									fig_filespec=fig_filespec)
+		if np.isclose(M, events_mags[event], atol=0.01):
+			plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
+										map_region, plot_point_ruptures=True, colormap="RdYlBu_r",
+										title=title, text_box=text_box, site_model_gis_file=site_model_gis_file,
+										fig_filespec=fig_filespec)
 
 
 	## Generate animated GIF
 	for ipe_name in ipe_names:
 		img_basename = "%s_%s" % (event, ipe_label)
-		create_animated_gif(fig_folder, img_basename)
-
+		#create_animated_gif(fig_folder, img_basename)
+exit()
 
 
 ## Determine which sections have highest probability
 for event in events:
-	print event
+	print(event)
 	for ipe_name in ipe_names:
-		print ipe_name
+		print(ipe_name)
 		sections = section_prob_dict[event][ipe_name].keys()
 		probs = [np.array(l) for l in section_prob_dict[event][ipe_name].values()]
-		#print probs[0]
+		#print(probs[0])
 		mean_probs = np.array([p.mean() for p in probs])
 		max_probs = np.array([p.max() for p in probs])
 		idxs = np.argsort(mean_probs)[::-1]
@@ -239,7 +253,8 @@ for event, color in zip(events, colors):
 	pylab.legend(loc=4)
 
 	fig_folder = os.path.join(base_fig_folder)
-	fig_filename = "events1-6_M_vs_prob_%s.%s" % (ipe_label, output_format)
+	#fig_filename = "events1-6_M_vs_prob_%s.%s" % (ipe_label, output_format)
+	fig_filename = "events7-10_M_vs_prob_%s.%s" % (ipe_label, output_format)
 	fig_filespec = os.path.join(fig_folder, fig_filename)
 	#fig_filespec = None
 	if fig_filespec:

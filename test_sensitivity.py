@@ -14,6 +14,7 @@ from create_animated_gif import create_animated_gif
 
 
 fig_folder = os.path.join(project_folder, "Figures", "Sensitivity", "v5", "Scenarios")
+#fig_folder = r"C:\Temp"
 
 
 ## Scenarios
@@ -43,7 +44,7 @@ strict_intersection = True
 ## Map parameters
 #map_region = (-74, -72, -46, -44.5)
 map_region = (-74, -72, -46.25, -44.8)
-output_format = "png"
+output_format = "pdf"
 
 
 ## IPE Logic tree
@@ -68,13 +69,13 @@ for geom_type in ["Polygons_v3", "Points"]:
 		## Cuervo opp is part of Centre
 		if site_model.name != "Cuervo opp":
 			all_site_models.append(site_model)
-print len(all_site_models)
+print(len(all_site_models))
 
 
 #scenarios = ["Quitralco", "Azul Tigre South", "2007", "Due East", "Due West"]
 #scenarios = ["Azul Tigre South", "Quitralco East", "Due East"]
-scenarios = ["Azul Tigre South", "Quitralco East", "Rio Manihuales", "Quitralco West"]
-#scenarios = ["LOFZ South"]
+#scenarios = ["Azul Tigre South", "Quitralco East", "Rio Manihuales", "Quitralco West"]
+scenarios = ["Quitralco West"]
 for scenario in scenarios:
 	## Read rupture scenario
 	scenario_filespec = os.path.join(gis_folder, 'LOFZ_rupture_scenarios.TAB')
@@ -87,7 +88,7 @@ for scenario in scenarios:
 	## Set characteristic magnitude from MSR and fault area
 	msr = getattr(oqhazlib.scalerel, MSR)()
 	char_mag = msr.get_median_mag(scenflt.get_rupture().surface.get_area(), scenflt.rake)
-	print scenflt.get_length(), scenflt.width, char_mag
+	print(scenflt.get_length(), scenflt.width, char_mag)
 	scenflt.mfd.min_mag = np.round(char_mag, 1)
 	scenflt.mfd.char_mag = scenflt.mfd.min_mag + scenflt.mfd.bin_width/2.
 	scenario_src_model = rshalib.source.SourceModel(scenario, [scenflt])
@@ -109,9 +110,10 @@ for scenario in scenarios:
 		#ipe_name = "LogicTree"
 
 		#ipe_names = ["LogicTree", "AllenEtAl2012", "AtkinsonWald2007", "BakunWentworth1997WithSigma", "Barrientos1980WithSigma"]
-		#ipe_names = ["LogicTree"] + ipe_models
-		ipe_names = ipe_models[:1]
+		ipe_names = ["LogicTree"] + ipe_models
+		#ipe_names = ipe_models[:1]
 		#ipe_names = ipe_names[3:4]
+		#ipe_names = ["BakunWentworth1997WithSigma"]
 		max_probs, section_probs, scenario_probs = {}, {}, {}
 		for ipe_name in ipe_names:
 			if ipe_name != "LogicTree":
@@ -131,12 +133,11 @@ for scenario in scenarios:
 
 				for site_model in all_site_models:
 					dsha_model = rshalib.shamodel.DSHAModel(scenario, scenario_src_model, lt_gmpe_system_def,
-								grid_outline=[], grid_spacing=None,
-								soil_site_model=site_model, imt_periods={"MMI": [0]},
+								site_model=site_model, imt_periods={"MMI": [0]},
 								truncation_level=0, integration_distance=500)
 
 					uhs_field = dsha_model.calc_gmf_fixed_epsilon()
-					hm = uhs_field.getHazardMap()
+					hm = uhs_field.get_hazard_map()
 					if (hm.intensities > pe_threshold).all():
 						pe_site_models.append(site_model)
 						pe_thresholds.append(pe_threshold)
@@ -146,8 +147,8 @@ for scenario in scenarios:
 
 			print("Positive: n=%d; Negative: n=%d" %(len(pe_site_models), len(ne_site_models)))
 
-			if ipe_name == "BakunWentworth1997WithSigma" or not 0 in (len(pe_site_models), len(ne_site_models)):
-			#if True:
+			#if ipe_name == "BakunWentworth1997WithSigma" or not 0 in (len(pe_site_models), len(ne_site_models)):
+			if True:
 				## Compute probability for this scenario and threshold
 				prob_dict = calc_rupture_probability_from_ground_motion_thresholds(
 									scenario_src_model, lt_gmpe_system_def, imt, pe_site_models,
@@ -217,14 +218,14 @@ for scenario in scenarios:
 					max_prob_idx = probs.argmax()
 					max_prob = probs[max_prob_idx]
 					rup_name = prob_dict.keys()[max_prob_idx]
-					print M, rup_name, max_prob
+					print(M, rup_name, max_prob)
 					max_probs[ipe_name].append(max_prob)
 
 					for rup_name, prob in prob_dict.items():
 						if rup_name == section_name:
 							section_probs[ipe_name].append(prob)
 						if prob >= scenario_prob:
-							print "  ", M, rup_name, prob
+							print("  ", M, rup_name, prob)
 
 
 					## Plot map
@@ -252,17 +253,19 @@ for scenario in scenarios:
 
 						## Colormaps: RdBu_r, YlOrRd, BuPu, RdYlBu_r, Greys
 						site_model_gis_file = os.path.join(gis_folder, "Polygons_v3.shp")
-						plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
-													map_region, plot_point_ruptures=True, colormap="RdYlBu_r",
-													title=title, text_box=text_box, site_model_gis_file=site_model_gis_file,
-													fig_filespec=fig_filespec)
+						#plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
+						#							map_region, plot_point_ruptures=True, colormap="RdYlBu_r",
+						#							title=title, text_box=text_box, site_model_gis_file=site_model_gis_file,
+						#							fig_filespec=fig_filespec)
 
 				## Generate animated GIF
+				"""
 				img_basename = "%s_MMI=%s_%s" % (scenario, intensity, ipe_name)
 				try:
 					create_animated_gif(fig_folder, img_basename)
 				except:
 					pass
+				"""
 
 
 		## Plot max_prob vs magnitude
@@ -301,3 +304,4 @@ for scenario in scenarios:
 			else:
 				pylab.show()
 
+			pylab.clf()

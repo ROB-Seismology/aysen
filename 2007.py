@@ -29,7 +29,7 @@ if __name__ == "__main__":
 	# Updated (KVN)
 	#eq = eqcatalog.LocalEarthquake(ID, date, time, lon, lat, depth, MW=MW, ML=0, MS=0)
 	eq = eqcatalog.LocalEarthquake(ID, date, time, lon, lat, depth, mag={'MW': MW})
-	print eq.date.isoformat()
+	print(eq.date)
 
 	strike, dip, rake = 354, 88, 176
 	nopl = rshalib.geo.NodalPlane(strike, dip, rake)
@@ -59,7 +59,8 @@ if __name__ == "__main__":
 	## Define site model
 	grid_outline = [-74, -71, -46, -44.5]
 	grid_spacing = (0.1, 0.1)
-	soil_site_model = None
+	site_model = rshalib.site.GenericSiteModel.from_grid_spec(grid_outline,
+																grid_spacing)
 
 	#imt_periods = {'PGA': [0], 'SA': [0.25, 1.]}
 	#period_list = sorted(np.sum(imt_periods.values()))
@@ -80,9 +81,9 @@ if __name__ == "__main__":
 		gmpe_name = "AverageGMPE"
 
 	dsha_model = rshalib.shamodel.DSHAModel(model_name, pt_src_model, gmpe_system_def,
-					grid_outline=grid_outline, grid_spacing=grid_spacing,
-					soil_site_model=soil_site_model, imt_periods=imt_periods,
-					truncation_level=truncation_level, integration_distance=integration_distance)
+										site_model, imt_periods=imt_periods,
+										truncation_level=truncation_level,
+										integration_distance=integration_distance)
 
 	#uhs_field = dsha_model.calc_gmf_fixed_epsilon_mp(num_cores=4, stddev_type="total")
 	#correlation_model = oqhazlib.correlation.JB2009CorrelationModel(vs30_clustering=True)
@@ -99,7 +100,7 @@ if __name__ == "__main__":
 		breakpoints = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 		norm = PiecewiseLinearNorm(breakpoints)
 		title = "%s, Mw=%s" % (date, MW)
-		hm = uhs_field.getHazardMap(period_spec=T)
+		hm = uhs_field.get_hazard_map(period_spec=T)
 		#map zonder kleuren
 		#hm.export_GeoTiff("raster.tiff", num_cells = 100)
 		# contour_format parameter is replaced with format property of ColorbarStyle (KVN)

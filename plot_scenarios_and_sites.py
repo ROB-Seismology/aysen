@@ -12,11 +12,12 @@ fig_folder = os.path.join(project_folder, "Figures", "Paper")
 ## Map parameters
 #map_region = (-74, -72, -46.25, -44.75)
 #map_region = (-74, -72, -46.0, -44.75)
-map_region = (-74, -72, -46.25, -44.8)
+#map_region = (-74, -72, -46.25, -44.8)
 
 output_format = "png"
 
 fig_filename = "Scenario_and_site_map.%s" % output_format
+#fig_filename = "Scenario_map.%s" % output_format
 fig_filespec = os.path.join(fig_folder, fig_filename)
 #fig_filespec = None
 
@@ -51,7 +52,7 @@ for flt in src_model:
 		#label = "%s\n(M=%.1f)" % (flt.source_id, mag)
 		label = "%d (M=%.1f)" % (numbers[flt.source_id], mag)
 		labels[flt.source_id] = label
-print labels
+print(labels)
 
 joined_attributes = {'label': {'key': 'Name', 'values': labels}}
 data = lbm.GisData(gis_filespec, label_colname='label', joined_attributes=joined_attributes,
@@ -77,7 +78,7 @@ for polygon_data in multipolygon_data:
 data = polygons[0].to_multi_polygon()
 for polygon in polygons[1:]:
 	data.append(polygon)
-print site_names
+print(site_names)
 #data.style_params['label_anchor'] = ['east', None, None, 'south', 'south', None]
 #data.style_params['horizontal_alignment'] = ['left', None, None, 'right', 'left', None]
 #data.style_params['offset'] = [(3,0), None, None, (0,0), (3,0), None]
