@@ -99,7 +99,7 @@ distances = np.array([10., 20, 40, 75, 100]) / 100.
 """
 
 for title, prob, mag, dist in cases:
-	print title
+	print(title)
 	## prob_diffs: negative when prob > scenario_prob, resulting in stronger penalization
 	prob_diff = scenario_prob - prob
 	mag_diff = mag - scenario_mag
