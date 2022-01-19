@@ -36,6 +36,34 @@ DIP = 89
 
 
 def create_point_source(lon, lat, mag, depth, strike, dip, rake, id=""):
+	"""
+	Create point source from given parameters
+
+	Note: other parameters (upper and lower seismogenic depth, aspect ratio,
+	magnitude scaling relationship and rupture mesh spacing) are defined,
+	at the module level, but could be overridden
+
+	:param lon:
+		float, longitude (in degrees)
+	:param lat:
+		float, latitude (in degrees)
+	:param mag:
+		float, (moment) magnitude
+	:param depth:
+		float, focal depth (in km)
+	:param strike:
+		int, fault strike (in degrees)
+	:param dip:
+		int, fault dip (in degrees)
+	:param rake:
+		int, fault rake (in degrees)
+	:param id:
+		str, source ID
+		(default: '')
+
+	:return:
+		instance of :class:`rshalib.source.PointSource`
+	"""
 	point = rshalib.geo.Point(lon, lat)
 	name = "%.2f, %.2f" % (lon, lat)
 
@@ -55,6 +83,34 @@ def create_point_source(lon, lat, mag, depth, strike, dip, rake, id=""):
 
 def create_uniform_grid_source_model(grid_outline, grid_spacing, min_mag,
 									max_mag, dM, depth, strike, dip, rake):
+	"""
+	Create uniform grid source model with same parameters at each node
+
+	Note: other parameters (upper and lower seismogenic depth, aspect ratio,
+	magnitude scaling relationship and rupture mesh spacing) are defined,
+	at the module level, but could be overridden
+
+	:param grid_outline:
+		(min_lon, max_lon, min_lat, max_lat) tuple
+	:param grid_spacing:
+		float, grid spacing (in degrees)
+	:param min_mag:
+		float, minimum magnitude
+	:param max_mag:
+		float, maximum magnitude
+	:param dM:
+		float, magnitude bin width
+	:param depth:
+		float, focal depth (in km)
+	:param strike:
+	:param dip:
+	:param rake:
+		ints, fault strike, dip and rake (in degrees)
+
+	:return:
+		instance of :class:`rshalib.source.SourceModel`, containing grid of
+		point sources
+	"""
 	num_mags = int(round((max_mag - min_mag) / dM))
 	mfd = rshalib.mfd.EvenlyDiscretizedMFD(min_mag + dM/2, dM, np.ones(num_mags)/float(num_mags))
 
@@ -79,6 +135,19 @@ def create_uniform_grid_source_model(grid_outline, grid_spacing, min_mag,
 
 
 def read_fault_source_model(gis_filespec, characteristic=True):
+	"""
+	Read fault source model from GIS file
+
+	:param gis_filespec:
+		str, full path to GIS file
+	:param characteristic:
+		bool, whether fault sources should be simple faults (False)
+		or characteristic faults (True)
+		(default: True)
+
+	:return:
+		instance of :class:`rshalib.source.SourceModel`, containing fault sources
+	"""
 	## Note: set fault dip to 89 degrees to avoid crash
 	## in rupture.surface.get_joyner_boore_distance function in oqhazlib
 	column_map = {
@@ -112,7 +181,30 @@ def read_fault_source_model(gis_filespec, characteristic=True):
 	return somo
 
 
-def read_fault_source_model_as_floating_ruptures(gis_filespec, min_mag, max_mag, dM, depth, aspect_ratio=None):
+def read_fault_source_model_as_floating_ruptures(gis_filespec, min_mag, max_mag,
+															dM, depth, aspect_ratio=None):
+	"""
+	Read fault source model from GIS file, but split into overlapping rupture
+	planes, extending from the top edge and with lengths and widths scaled
+	by magnitude
+
+	:param gis_filespec:
+		str, full path to GIS file
+	:param min_mag:
+		float, minimum magnitude for generated ruptures
+	:param max_mag:
+		float, maximum magnitude for generated ruptures
+	:param dM:
+		float, magnitude bin width
+	:param depth:
+		obsolete, currently ignored
+	:param aspect_ratio:
+		float, aspect ratio for generated rupture planes
+		(default: None = use default ratio defined at module level)
+
+	:return:
+		instance of :class:`rshalib.source.SourceModel`, containing fault sources
+	"""
 	from copy import deepcopy
 	from openquake.hazardlib.geo.surface.simple_fault import SimpleFaultSurface
 
@@ -190,6 +282,34 @@ def read_fault_source_model_as_floating_ruptures(gis_filespec, min_mag, max_mag,
 
 def read_fault_source_model_as_network(gis_filespec, section_len=2.85, dM=0.2,
 					num_sections=None, max_strike_delta=60, characteristic=True):
+	"""
+	Read fault source model as network, containing all possible connections
+
+	:param gis_filespec:
+		str, full path to GIS file
+	:param section_len:
+		float, minimum length to split fault traces in (in km);
+		depending on the magnitude, multiple sections may be combined
+		(default: 2.85)
+	:param dM:
+		float, magnitude bin width
+		(default: 0.2)
+	:param num_sections:
+		int, if given, generate only the combinations involving this
+		number of sections
+		(default: None)
+	:param max_strike_delta:
+		int, maximum change in strike (in degrees) to allow for combining sections
+		(default: 60)
+	:param characteristic:
+		bool, whether fault sources should be simple faults (False)
+		or characteristic faults (True)
+		(default: True)
+
+	:return:
+		generator, yielding instances of :class:`rshalib.source.SourceModel`
+		for each magnitude
+	"""
 	#import eqgeology.Scaling.WellsCoppersmith1994 as wc
 	wc = oqhazlib.scalerel.WC1994()
 
@@ -251,6 +371,20 @@ def read_fault_source_model_as_network(gis_filespec, section_len=2.85, dM=0.2,
 
 
 def polygon_to_site_model(polygon, name, polygon_discretization):
+	"""
+	Create site model by discretizing given polygon
+
+	:param polygon:
+		instance of :class:`openquake.hazardlib.geo.Polygon`
+		or :class:`openquake.hazardlib.geo.Point`
+	:param name:
+		str, site model name
+	:param polygon_discretization:
+		float, site spacing (in km)
+
+	:return:
+		instance of :class:`rshalib.site.SoilSiteModel`
+	"""
 	if isinstance(polygon, oqhazlib.geo.Polygon):
 		try:
 			site_model = rshalib.site.SoilSiteModel.from_polygon(polygon,
@@ -268,6 +402,23 @@ def polygon_to_site_model(polygon, name, polygon_discretization):
 
 
 def read_evidence_site_info_from_txt(filespec, polygon_discretization=5):
+	"""
+	Read shaking evidence from different sites from text file
+
+	:param filespec:
+		str, full path to text file containing shaking evidence
+	:param polygon_discretization:
+		float, spacing (in km) to discretize polygonal sites
+		(default: 5)
+
+	:return:
+		(pe_thresholds, pe_site_models, ne_thresholds, ne_site_models) tuple:
+		- pe_thresholds: list of floats, intensity thresholds for positive evidence
+		- pe_site_models: list with instances of :class:`rshalib.site.SoilSiteModel`,
+		  corresponding soil site models for positivie evidence
+		- ne_thresholds: list of floats, intensity thresholds for negative evidence
+		- ne_site_models: corresponding soil site models for negative evidence
+	"""
 	pe_thresholds, ne_thresholds = [], []
 	pe_polygons, ne_polygons = [], []
 
@@ -320,6 +471,25 @@ def read_evidence_site_info_from_txt(filespec, polygon_discretization=5):
 
 
 def read_evidence_site_info_from_gis(gis_filespec, event, polygon_discretization=5):
+	"""
+	Read shaking evidence from different sites from GIS file
+
+	:param gis_filespec:
+		str, full path to GIS file containing shaking evidence
+	:param event:
+		str, event ID
+	:param polygon_discretization:
+		float, spacing (in km) to discretize polygonal sites
+		(default: 5)
+
+	:return:
+		(pe_thresholds, pe_site_models, ne_thresholds, ne_site_models) tuple:
+		- pe_thresholds: list of floats, intensity thresholds for positive evidence
+		- pe_site_models: list with instances of :class:`rshalib.site.SoilSiteModel`,
+		  corresponding soil site models for positivie evidence
+		- ne_thresholds: list of floats, intensity thresholds for negative evidence
+		- ne_site_models: corresponding soil site models for negative evidence
+	"""
 	pe_thresholds, ne_thresholds = [], []
 	pe_polygons, ne_polygons = [], []
 	pe_site_names, ne_site_names = [], []
@@ -384,6 +554,19 @@ def read_evidence_site_info_from_gis(gis_filespec, event, polygon_discretization
 
 
 def read_evidence_sites_from_gis(gis_filespec, polygon_discretization=5):
+	"""
+	Read sites with shaking evidence (without actual intensity information)
+	from GIS file
+
+	:param gis_filespec:
+		str, full path to GIS file
+	:param polygon_discretization:
+		float, spacing (in km) to discretize polygonal sites
+		(default: 5)
+
+	:return:
+		list with instances of :class:`rshalib.site.SoilSiteModel`
+	"""
 	polygons = {}
 
 	for rec in read_gis_file(gis_filespec):
@@ -416,7 +599,61 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 								prob_min=0., prob_max=1., highlight_max_prob_section=True,
 								max_prob_mag_precision=1, legend_label="Normalized probability",
 								neutral_site_models=[], fig_filespec=None):
+	"""
+	Generate map of rupture probabilities
 
+	:param source_model:
+		instance of :class:`rshalib.source.SourceModel`
+	:param prob_dict:
+		dict, mapping source IDs to probabilities (corresponding to center
+		magnitudes of their MFD)
+	:param pe_site_models:
+	:param ne_site_models:
+		list with instances of :class:`rshalib.site.SoilSiteModel`,
+		site models with positive/negative evidence
+	:param region:
+		(min_lon, max_lon, min_lat, max_lat), map region
+	:param plot_point_ruptures:
+		bool, whether to plot point sources as rupture planes (True)
+		or as points (False)
+		(default: True)
+	:param colormap:
+		str, name of matplotlib colormap to use for probabilities
+		(default: "RdBu_r")
+	:param title:
+		str, plot title
+		(default: None)
+	:param text_box:
+		str, text to add in separate box
+		(default: None)
+	:param site_model_gis_file:
+		str, full path to GIS file containing sites with shaking evidence
+		(necessary to plot polygons that have been discretized into points)
+		(default: None)
+	:param prob_min:
+		float, minimum probability for color scale
+		(default: 0.)
+	:param prob_max:
+		float, maximum probability for color scale
+		(default: 1.)
+	:param highlight_max_prob_section:
+		bool, whether or not to highlight the section with the highest probability
+		(default: True)
+	:param max_prob_mag_precision:
+		int, precision (number of decimals) to round magnitude corresponding
+		to maximum probability
+		(default: 1)
+	:param legend_label:
+		str, label to use in map legend
+		(default: "Normalized probability")
+	:param neutral_site_models:
+		list with instances of :class:`rshalib.site.SoilSiteModel`,
+		site models with no evidence
+		(default: [])
+	:param fig_filespec:
+		str, full path to output file
+		(default: None, will plot on screen)
+	"""
 	## Extract source locations
 	x, y = [], []
 	values = {'mag': [], 'prob': []}
@@ -427,18 +664,18 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 			source = source_model[source_id]
 			center_magnitudes = source.mfd.get_center_magnitudes()
 			idx = probs.argmax()
-			prob_max = probs[idx]
+			max_prob = probs[idx]
 			## Select non-zero probability rupture locations to be plotted
-			if prob_max > PROB_MIN:
-				values['prob'].append(prob_max)
-				#values['prob'].append(prob_max / ref_prob)
+			if max_prob > PROB_MIN:
+				values['prob'].append(max_prob)
+				#values['prob'].append(max_prob / ref_prob)
 				mag = source.mfd.get_center_magnitudes()[idx]
 				values['mag'].append(mag)
 
 				if not plot_point_ruptures:
 					x.append(source.location.longitude)
 					y.append(source.location.latitude)
-					print(x[-1], y[-1], values['mag'][-1], prob_max)
+					print(x[-1], y[-1], values['mag'][-1], max_prob)
 				else:
 					## Not sure this is correct if fault is not vertical
 					## Point source ruptures
@@ -628,6 +865,49 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 						title=None, text_box=None, site_model_gis_file=None,
 						neutral_site_models=[], plot_rms_as_alpha=False,
 						plot_epicenter_as="area", fig_filespec=None):
+	"""
+	Generate map of rupture probabilities
+
+	:param grd_source_model:
+		instance of :class:`rshalib.source.SourceModel`, grid source model
+	:param mag_grid:
+		2-D array, mesh of magnitudes calculated with -search method
+	:param rms_grid:
+		2-D array of RMS errors corresponding to :param:`mag_grid`
+	:param pe_site_models:
+	:param ne_site_models:
+		list with instances of :class:`rshalib.site.SoilSiteModel`,
+		site models with positive/negative evidence
+	:param region:
+		(min_lon, max_lon, min_lat, max_lat), map region
+	:param colormap:
+		str, name of matplotlib colormap to use for probabilities
+		(default: "RdBu_r")
+	:param title:
+		str, plot title
+		(default: None)
+	:param text_box:
+		str, text to add in separate box
+		(default: None)
+	:param site_model_gis_file:
+		str, full path to GIS file containing sites with shaking evidence
+		(necessary to plot polygons that have been discretized into points)
+		(default: None)
+	:param neutral_site_models:
+		list with instances of :class:`rshalib.site.SoilSiteModel`,
+		site models with no evidence
+		(default: [])
+	:param plot_rms_as_alpha:
+		bool, whether to plot RMS errors as transparency (True) or as an
+		additional set of contour lines (False)
+		(default: False)
+	:param plot_epicenter_as:
+		str, how to plot the estimated epicenter: 'point', 'area' or 'both'
+		(default: 'area')
+	:param fig_filespec:
+		str, full path to output file
+		(default: None, will plot on screen)
+	"""
 	layers = []
 
 	lon_grid, lat_grid = grd_source_model.lon_grid, grd_source_model.lat_grid
