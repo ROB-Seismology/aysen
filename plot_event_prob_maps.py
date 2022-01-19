@@ -1,8 +1,10 @@
-import os
+import os, sys
 import numpy as np
 
 import hazard.rshalib as rshalib
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(SCRIPT_DIR)
 from aysenlib import *
 from create_animated_gif import create_animated_gif
 
