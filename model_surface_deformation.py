@@ -9,12 +9,14 @@
 # by (radar wavelength)/(4 * pi) to get the apparent surface displacement in meters or whatever units you use for the radar wavelength
 
 
-import os
+import os, sys
 import numpy as np
 
 import mapping.layeredbasemap as lbm
 from eqgeology.faultlib import okada
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(SCRIPT_DIR)
 from aysenlib import (read_fault_source_model_as_network, read_fault_source_model,
 					gis_folder)
 
@@ -71,7 +73,7 @@ def plot_okada_map(U, component, wavelength, output="displacement", map_region=[
 
 	dZ = U.get_component(component)
 	dzmax = dZ.range()
-	print U.U.max(), dzmax
+	print(U.U.max(), dzmax)
 
 	layers = []
 
@@ -282,7 +284,7 @@ if __name__ == "__main__":
 		flt.rake = 176
 		#if flt_idx == 3:
 		#	flt.rake = -4
-		print flt.get_dip_direction()
+		print(flt.get_dip_direction())
 
 		#flt.mfd.min_mag = 5.0
 		#flt.plot_rupture_bounds_3d(flt.get_ruptures_Poisson())
@@ -291,7 +293,7 @@ if __name__ == "__main__":
 		section_length = 1.5
 		num_sections = int(round(flt.get_length() / section_length))
 		subfaults = flt.get_subfaults(num_sections, 1, rigidity=3E+10)
-		print subfaults.shape
+		print(subfaults.shape)
 
 		## Override kinematics (rake, mu)
 		## Note: dip would only work if fault is not subdivided downdip
@@ -317,8 +319,8 @@ if __name__ == "__main__":
 	#elastic_fault.set_slip_from_magnitude(mag)
 	#elastic_fault.taper_slip()
 	for s, subflt in enumerate(elastic_fault.subfaults):
-		print s, subflt.slip, subflt.calc_magnitude(), subflt.strike, subflt.rake
-	print elastic_fault.calc_magnitude()
+		print(s, subflt.slip, subflt.calc_magnitude(), subflt.strike, subflt.rake)
+	print(elastic_fault.calc_magnitude())
 
 	## Compute moment tensor
 	mt = elastic_fault.get_moment_tensor()
@@ -404,5 +406,3 @@ if __name__ == "__main__":
 	pylab.plot(inverted_slip_distribution, label="Inverted")
 	pylab.legend()
 	pylab.show()
-
-
