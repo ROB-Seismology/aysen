@@ -1,6 +1,5 @@
 """
-Ground-motion field due to fault source
-Aysen Fjord
+Calculate misfit between observed intensities and intensities predicted by IPEs
 """
 
 import os, sys
@@ -24,7 +23,6 @@ import hazard.rshalib as rshalib
 import mapping.layeredbasemap as lbm
 from mapping.layeredbasemap.cm.norm import PiecewiseLinearNorm, LinearNorm
 import eqcatalog
-from aysenlib import roman_intensity_dict
 
 
 ## Common parameters
@@ -111,16 +109,17 @@ for gmpe_name in ["AllenEtAl2012", "AtkinsonWald2007", "BakunWentworth1997", "Ba
 					except:
 						pass
 					else:
-						site = rshalib.site.SHASite(lon, lat, name=name)
+						site = rshalib.site.GenericSite(lon, lat, name=name)
 						observation_sites.append(site)
 						observed_intensities.append(mmi)
+		site_model = rshalib.site.GenericSiteModel.from_sites(observation_sites)
+		soil_site_model = site_model.to_soil_site_model()
 
 
 		## Compare observed with predicted intensities
 		model_name = "Aysen Fjord"
 		dsha_model = rshalib.shamodel.DSHAModel(model_name, pt_src_model, gmpe_system_def,
-						grid_outline=[], grid_spacing=[], soil_site_model=None,
-						sites=observation_sites, imt_periods=imt_periods,
+						site_model=soil_site_model, imt_periods=imt_periods,
 						truncation_level=truncation_level, integration_distance=integration_distance)
 
 		uhs_field = dsha_model.calc_gmf_fixed_epsilon()
