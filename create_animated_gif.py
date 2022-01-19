@@ -34,5 +34,5 @@ if __name__ == "__main__":
 			#for ipe_name in ["BakunWentworth1997WithSigma", "LogicTree"]:
 			for ipe_name in ["BakunWentworth1997WithSigma"]:
 				img_basename = "%s_MMI=%s_%s" % (scenario, mmi, ipe_name)
-				print img_basename
+				print(img_basename)
 				create_animated_gif(folder, img_basename)
