@@ -9,13 +9,15 @@
 # by (radar wavelength)/(4 * pi) to get the apparent surface displacement in meters or whatever units you use for the radar wavelength
 
 
-import os
+import os, sys
 import numpy as np
 import matplotlib
 import cmocean
 
 import mapping.layeredbasemap as lbm
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(SCRIPT_DIR)
 from aysenlib import (read_fault_source_model_as_network, read_fault_source_model,
 					gis_folder)
 
