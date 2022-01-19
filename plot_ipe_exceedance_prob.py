@@ -1,4 +1,4 @@
-import os
+import os, sys
 import numpy as np
 import scipy.stats
 import openquake.hazardlib as oqhazlib
@@ -6,6 +6,8 @@ import hazard.rshalib as rshalib
 from hazard.rshalib.gsim import OqhazlibGMPE
 import pylab
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(SCRIPT_DIR)
 from aysenlib import (get_roman_intensity, project_folder)
 
 
