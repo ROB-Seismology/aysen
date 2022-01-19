@@ -1,4 +1,4 @@
-
+import os, sys
 import numpy as np
 
 import mapping.layeredbasemap as lbm
@@ -6,6 +6,9 @@ import openquake.hazardlib as oqhazlib
 import hazard.rshalib as rshalib
 from hazard.rshalib.source.grid_source_model import SimpleUniformGridSourceModel
 from hazard.rshalib.source_estimation import estimate_epicenter_location_and_magnitude_from_intensities
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(SCRIPT_DIR)
 from aysenlib import (create_uniform_grid_source_model, create_point_source,
 						plot_gridsearch_map, project_folder, gis_folder,
 						TRT, USD, LSD, RAR, RMS)
@@ -51,13 +54,14 @@ tom = oqhazlib.tom.PoissonTOM(1)
 [rupture] = epicenter.iter_ruptures(tom)
 
 all_sites = [rshalib.site.SoilSite(lon_obs[i], lat_obs[i]) for i in range(num_obs)]
-site_model = rshalib.site.SoilSiteModel("All sites", all_sites)
-ipe = oqhazlib.gsim.get_available_gsims()[ipe_name]()
+site_model = rshalib.site.SoilSiteModel(all_sites, "All sites")
+ipe = rshalib.gsim.get_oq_gsim(ipe_name)
+print(type(ipe))
 sctx, rctx, dctx = ipe.make_contexts(site_model, rupture)
 site_intensities, _ = ipe.get_mean_and_stddevs(sctx, rctx, dctx, imt, [oqhazlib.const.StdDev.TOTAL])
 
 for i in range(num_obs):
-	print lon_obs[i], lat_obs[i], site_intensities[i]
+	print(lon_obs[i], lat_obs[i], site_intensities[i])
 
 ## Categorize sites as positive or negative evidence
 """
@@ -83,7 +87,7 @@ pe_site_model, pe_sites, pe_intensities = site_model, all_sites, site_intensitie
 lon_obs_neg, lat_obs_neg, ne_intensities = [5.], [50.5], [5]
 num_obs = len(ne_intensities)
 ne_sites = [rshalib.site.SoilSite(lon_obs_neg[i], lat_obs_neg[i]) for i in range(num_obs)]
-ne_site_model = rshalib.site.SoilSiteModel("Negative evidence", ne_sites)
+ne_site_model = rshalib.site.SoilSiteModel(ne_sites, "Negative evidence")
 
 
 ## Grid search
@@ -94,7 +98,7 @@ print("BakunWentworth %s" % method)
 	ipe_name, imt, grd_src_model, pe_sites, pe_intensities,
 	ne_sites, ne_intensities, method=method, mag_bounds=(min_mag, max_mag)))
 idx = np.unravel_index(rms_grid.argmin(), rms_grid.shape)
-print mag_grid[idx], lon_grid[idx], lat_grid[idx]
+print(mag_grid[idx], lon_grid[idx], lat_grid[idx])
 
 
 map = plot_gridsearch_map(grd_src_model, mag_grid, rms_grid,
