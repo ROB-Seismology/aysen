@@ -3,7 +3,10 @@ Ground-motion field due to fault source
 Aysen Fjord
 """
 
-import os
+import os, sys
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(SCRIPT_DIR)
 
 
 ## Folder locations
@@ -129,7 +132,7 @@ for gmpe_name in ["AllenEtAl2012", "AtkinsonWald2007", "BakunWentworth1997", "Ba
 		num_observed += len(observed)
 
 	misfits = np.array(misfits)
-	print misfits
+	print(misfits)
 	rmse = np.sqrt(np.sum(misfits**2) / num_observed)
 	## Mean Absolute Error (see https://medium.com/human-in-a-machine-world/mae-and-rmse-which-metric-is-better-e60ac3bde13d)
 	mae = np.sum(np.abs(misfits)) / num_observed
@@ -140,4 +143,4 @@ for gmpe_name in ["AllenEtAl2012", "AtkinsonWald2007", "BakunWentworth1997", "Ba
 
 ## Print misfit measures
 print("n=%d" % num_observed)
-print tab
+print(tab)
