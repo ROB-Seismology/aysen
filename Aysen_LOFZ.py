@@ -3,7 +3,10 @@ Ground-motion field due to fault source
 Aysen Fjord
 """
 
-import os
+import os, sys
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(SCRIPT_DIR)
 
 
 ## Folder locations
