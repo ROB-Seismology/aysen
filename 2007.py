@@ -24,7 +24,7 @@ if __name__ == "__main__":
 	ID = "Swarm 2007"
 	MW = 6.2
 	lat, lon, depth = -45.374, -73.045, 4
-	date = datetime.date(2007, 04, 21)
+	date = datetime.date(2007, 4, 21)
 	time = datetime.time(17, 53, int(round(40.80)))
 	# Updated (KVN)
 	#eq = eqcatalog.LocalEarthquake(ID, date, time, lon, lat, depth, MW=MW, ML=0, MS=0)
