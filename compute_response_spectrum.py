@@ -22,10 +22,10 @@ def read_stream_from_excel(event, station_id):
 	xl_filespec = os.path.join(FOLDER, xl_filename)
 	wb = xlrd.open_workbook(xl_filespec)
 	for sheet in wb.sheets():
-		print sheet.name
+		print(sheet.name)
 		if station_id in sheet.name:
 			comp = sheet.name[-3:]
-			print comp
+			print(comp)
 			#time = sheet.col(0, start_rowx=7)
 			acc = sheet.col(1, start_rowx=7)
 			acc = np.array([cell.value for cell in acc])
