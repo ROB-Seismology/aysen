@@ -1,5 +1,8 @@
-import os
+import os, sys
 import hazard.rshalib as rshalib
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(SCRIPT_DIR)
 from aysenlib import (read_fault_source_model, project_folder, gis_folder)
 
 
@@ -12,18 +15,18 @@ rms = 2.85
 src_model = read_fault_source_model(gis_filespec, characteristic=False)
 for flt in src_model:
 	flt.rupture_mesh_spacing = rms
-	print flt.source_id, flt.name, flt.get_mean_strike(), flt.get_length(), flt.get_length() / rms
+	print(flt.source_id, flt.name, flt.get_mean_strike(), flt.get_length(), flt.get_length() / rms)
 
 flt_network = src_model.get_fault_network(allow_triple_junctions=allow_triple_junctions)
 flt_network.check_consistency()
-print flt_network.fault_links['0#09']
+print(flt_network.fault_links['0#09'])
 
 src_model.get_linked_subfaults([['1#02', '1#01', '12#29']])
-exit()
+#exit()
 
 #connections = flt_network.get_connections('0#01', 25, allow_triple_junctions=allow_triple_junctions)
 connections = flt_network.get_all_connections(66, allow_triple_junctions=allow_triple_junctions)
-print len(connections), max([len(conn) for conn in connections])
+print(len(connections), max([len(conn) for conn in connections]))
 faults = []
 mags = {}
 for conn in connections:
@@ -41,7 +44,7 @@ for conn in connections:
 #pylab.plot(mags.keys(), mags.values())
 #pylab.show()
 
-exit()
+#exit()
 fault_model = rshalib.source.SourceModel("", faults)
 map = fault_model.get_plot()
 map.plot()
