@@ -1,7 +1,10 @@
 
-import os
+import os, sys
 import mapping.layeredbasemap as lbm
 from hazard.rshalib.source.read_from_gis import import_source_model_from_gis
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(SCRIPT_DIR)
 from aysenlib import (import_source_model_from_gis, project_folder, gis_folder)
 
 
@@ -12,7 +15,7 @@ fig_folder = os.path.join(project_folder, "Figures", "Paper")
 ## Map parameters
 #map_region = (-74, -72, -46.25, -44.75)
 #map_region = (-74, -72, -46.0, -44.75)
-#map_region = (-74, -72, -46.25, -44.8)
+map_region = (-74, -72, -46.25, -44.8)
 
 output_format = "png"
 
