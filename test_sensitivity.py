@@ -1,20 +1,24 @@
 # -*- coding: iso-Latin-1 -*-
 
-import os
+import os, sys
 import numpy as np
 import pylab
 import openquake.hazardlib as oqhazlib
 import hazard.rshalib as rshalib
 from hazard.rshalib.source_estimation import calc_rupture_probability_from_ground_motion_thresholds
+from eqcatalog.macro import get_roman_intensity
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(SCRIPT_DIR)
 from aysenlib import (project_folder, gis_folder, read_evidence_sites_from_gis,
 						read_fault_source_model, read_fault_source_model_as_floating_ruptures,
-						read_fault_source_model_as_network, get_roman_intensity,
+						read_fault_source_model_as_network,
 						plot_rupture_probabilities, TRT, MSR)
 from create_animated_gif import create_animated_gif
 
 
-fig_folder = os.path.join(project_folder, "Figures", "Sensitivity", "v5", "Scenarios")
-#fig_folder = r"C:\Temp"
+#fig_folder = os.path.join(project_folder, "Figures", "Sensitivity", "v5", "Scenarios")
+fig_folder = r"C:\Temp"
 
 
 ## Scenarios
@@ -155,7 +159,7 @@ for scenario in scenarios:
 									pe_thresholds, ne_site_models, ne_thresholds, truncation_level,
 									integration_distance_dict=lt_integration_distance_dict,
 									strict_intersection=strict_intersection)
-				[scenario_prob] = prob_dict.values()[0]
+				[scenario_prob] = list(prob_dict.values())[0]
 				scenario_probs[ipe_name] = scenario_prob
 				print("Scenario prob.: %s" % scenario_prob)
 
@@ -213,11 +217,11 @@ for scenario in scenarios:
 										integration_distance_dict=integration_distance_dict,
 										strict_intersection=strict_intersection)
 
-					probs = np.array(prob_dict.values())
+					probs = np.array(list(prob_dict.values()))
 					probs = probs[:, 0]
 					max_prob_idx = probs.argmax()
 					max_prob = probs[max_prob_idx]
-					rup_name = prob_dict.keys()[max_prob_idx]
+					rup_name = list(prob_dict.keys())[max_prob_idx]
 					print(M, rup_name, max_prob)
 					max_probs[ipe_name].append(max_prob)
 
