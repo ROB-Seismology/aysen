@@ -1,12 +1,14 @@
 """
 """
 
-import os
+import os, sys
 import numpy as np
 
 import mapping.layeredbasemap as lbm
 from eqgeology.faultlib import okada
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(SCRIPT_DIR)
 from aysenlib import (read_fault_source_model_as_network, read_fault_source_model,
 					gis_folder)
 from model_surface_deformation import plot_okada_map
@@ -28,12 +30,12 @@ for flt in src_model:
 	flt.dip = 88
 	flt.lower_seismogenic_depth = 14
 	flt.rake = 176
-	print flt.get_dip_direction()
+	print(flt.get_dip_direction())
 
 	as_num = int(flt.get_length() // 2)
 	ad_num = 2
 	subfaults = flt.get_subfaults(as_num, ad_num, rigidity=3E+10)
-	print subfaults.shape
+	print(subfaults.shape)
 
 	## Override kinematics (rake, mu)
 	## Note: dip would only work if fault is not subdivided downdip
@@ -92,13 +94,13 @@ slip_distribution = elastic_fault.invert_slip_distribution(X, Y, D_obs,
 slip_file = os.path.join(fig_folder, "slip_distribution.npy")
 np.save(slip_file, slip_distribution)
 #slip_distribution = np.load(slip_file)
-print slip_distribution
+print(slip_distribution)
 slip_distribution = [0.25] * len(elastic_fault)
 
 
 for subflt, slip in zip(elastic_fault.subfaults, slip_distribution):
 	subflt.slip = slip
-print elastic_fault.calc_magnitude()
+print(elastic_fault.calc_magnitude())
 
 elastic_fault.plot_3D()
 
