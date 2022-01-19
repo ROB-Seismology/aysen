@@ -13,8 +13,12 @@ from hazard.rshalib.source.read_from_gis import import_source_model_from_gis
 
 
 ## Folder locations
-#project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
-project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
+login_name = os.getlogin()
+if login_name == 'kris':
+	#project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
+	project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
+elif login_name == 'kwils':
+	project_folder = r'C:\Users\kwils.UGENT\OneDrive - UGent\Ground motions\modelling-input'
 gis_folder = os.path.join(project_folder, "GIS")
 
 
@@ -29,16 +33,6 @@ RMS = 2.5
 
 ## Override fault dip
 DIP = 89
-
-roman_intensity_dict = {1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI',
-						7: 'VII', 8: 'VIII', 9: 'IX', 10: 'X', 11: 'XI', 12: 'XII'}
-
-def get_roman_intensity(intensity):
-	intensity, dec = divmod(intensity, 1)
-	roman_intensity = roman_intensity_dict[intensity]
-	if dec == 0.5:
-		roman_intensity += '½'
-	return roman_intensity.decode('Latin-1')
 
 
 def create_point_source(lon, lat, mag, depth, strike, dip, rake, id=""):
@@ -196,7 +190,9 @@ def read_fault_source_model_as_floating_ruptures(gis_filespec, min_mag, max_mag,
 
 def read_fault_source_model_as_network(gis_filespec, section_len=2.85, dM=0.2,
 					num_sections=None, max_strike_delta=60, characteristic=True):
-	import eqgeology.Scaling.WellsCoppersmith1994 as wc
+	#import eqgeology.Scaling.WellsCoppersmith1994 as wc
+	wc = oqhazlib.scalerel.WC1994()
+
 
 	## Read fault model
 	fault_somo = read_fault_source_model(gis_filespec, characteristic=False)
@@ -218,7 +214,8 @@ def read_fault_source_model_as_network(gis_filespec, section_len=2.85, dM=0.2,
 	lengths = section_nums * section_len
 	widths = np.minimum(lengths / min_aspect_ratio, (LSD - USD) * np.sin(np.radians(DIP)))
 	areas = lengths * widths
-	mags = np.array([wc.GetMagFromRuptureParams(RA=ra)['RA'].val for ra in areas])
+	#â”¬mags = np.array([wc.GetMagFromRuptureParams(RA=ra)['RA'].val for ra in areas])
+	mags = np.array([wc.get_median_mag(ra, None) for ra in areas])
 
 	if num_sections is None:
 		## Determine magnitudes (spaced at least dM) and corresponding number of sections
@@ -491,7 +488,7 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 					mag_max_prob_id_dict[mag] = (idx, prob)
 			max_source_data = None
 			for mag, (idx, prob) in mag_max_prob_id_dict.items():
-				fault_id = prob_dict.keys()[idx]
+				fault_id = list(prob_dict.keys())[idx]
 				#print("Max. prob.: %s (M=%.2f) %.2f" % (fault_id, mag, prob))
 				line_data = source_data[int(idx)]
 				if not max_source_data:
@@ -834,7 +831,7 @@ if __name__ == "__main__":
 
 	dM = 0.25
 	min_mag, max_mag = 6.0 - dM/2, 7.0
-	print np.arange(min_mag, max_mag, dM) + dM/2
+	print(np.arange(min_mag, max_mag, dM) + dM/2)
 	#min_mag, max_mag = 6.25 - dM/2, 6.25 + dM/2
 
 	#source_model = create_uniform_grid_source_model(grid_outline, grid_spacing,
@@ -877,14 +874,15 @@ if __name__ == "__main__":
 	#ne_thresholds, ne_site_models) = read_evidence_site_info(filespec, polygon_discretization)
 
 	event = "SL-D"
+	version = 1
 	filespec = os.path.join(gis_folder, "Polygons.shp")
 	recs = read_gis_file(filespec)
 	events = sorted(set([rec["Event"] for rec in recs]))
-	print events
+	print(events)
 	(pe_thresholds, pe_site_models,
 	ne_thresholds, ne_site_models) = read_evidence_site_info_from_gis(filespec, event, polygon_discretization)
-	print pe_thresholds
-	print ne_thresholds
+	print(pe_thresholds)
+	print(ne_thresholds)
 
 	imt = oqhazlib.imt.MMI()
 
