@@ -2,12 +2,14 @@
 Python script to combine different figures into one.
 """
 
-import os
+import os, sys
 import pylab
 import matplotlib
 import matplotlib.gridspec as gridspec
 from thirdparty.recipes.autocrop import getAutoCroppedImage
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(SCRIPT_DIR)
 from aysenlib import project_folder
 
 base_fig_folder = os.path.join(project_folder, "Figures")
@@ -199,7 +201,7 @@ def plot_event_results(event_set="single"):
 
 			## Grid-search map
 			col = (event_nr % 3) * 2
-			print col, row
+			print(col, row)
 			fig_folder = os.path.join(base_fig_folder, "Events", "bw1997", "NE=+0.5")
 			fig_filename = "%s_bw1997.png" % event
 			fig_filespec = os.path.join(fig_folder, fig_filename)
@@ -212,7 +214,7 @@ def plot_event_results(event_set="single"):
 
 			## Probabilistic map
 			col = (event_nr % 3) * 2 + 1
-			print col, row
+			print(col, row)
 			fig_folder = os.path.join(base_fig_folder, "Events", "v2", "NE=+0.5", event)
 			mag = event_magnitudes[event]
 			fig_filename = "%s_BakunWentworth1997_M=%.2f.png" % (event, mag)
@@ -345,7 +347,7 @@ def plot_scenario_sensitivity_maps():
 	for m, mag in enumerate(mags):
 		row = m // num_cols
 		col = (m % num_cols)
-		print col, row
+		print(col, row)
 		fig_folder = os.path.join(base_fig_folder, "Sensitivity", "v5", "Scenarios")
 		fig_filename = "%s_MMI=%.1f_%s_M=%.2f.png"
 		fig_filename %= (scenario, threshold_mmi, ipe_name, mag)
@@ -379,7 +381,7 @@ def plot_scenario_mag_vs_maxprob():
 	for s, scenario in enumerate(scenarios):
 		row = s // num_cols
 		col = (s % num_cols)
-		print col, row
+		print(col, row)
 
 		fig_folder = os.path.join(base_fig_folder, "Sensitivity", "v5", "Scenarios")
 		fig_filename = "%s_MMI=%.1f_M_vs_prob.png" % (scenario, threshold_mmi)
@@ -417,7 +419,7 @@ def plot_resolution_power_maps_by_mag():
 	for m, mag in enumerate(mags):
 		row = m // num_cols
 		col = (m % num_cols)
-		print col, row
+		print(col, row)
 		fig_folder = os.path.join(base_fig_folder, "Sensitivity", "v6", "ResolutionPower")
 		fig_filename = "ResPow_%s_MMI=%.1f_M=%.2f.png"
 		fig_filename %= (ipe_name, threshold_mmi, mag)
@@ -458,7 +460,7 @@ def plot_resolution_power_maps_by_ipe_and_lower_mmi():
 	row = 0
 	for i, ipe_name in enumerate(ipe_names):
 		col = (i % num_cols)
-		print col, row
+		print(col, row)
 		fig_folder = os.path.join(base_fig_folder, "Sensitivity", "v6", "ResolutionPower")
 		fig_filename = "ResPow_%s_MMI=%.1f_M=%.2f.png"
 		fig_filename %= (ipe_name, threshold_mmi, mag)
@@ -480,7 +482,7 @@ def plot_resolution_power_maps_by_ipe_and_lower_mmi():
 	row = 1
 	for m, mag in enumerate(mags):
 		col = (m % num_cols)
-		print col, row
+		print(col, row)
 		fig_folder = os.path.join(base_fig_folder, "Sensitivity", "v6", "ResolutionPower")
 		fig_filename = "ResPow_%s_MMI=%.1f_M=%.2f.png"
 		fig_filename %= (ipe_name, threshold_mmi, mag)
@@ -526,7 +528,7 @@ def plot_station_response_spectra(suffix="comparison"):
 	for i, station in enumerate(stations):
 		#row = i
 		col = len(stations) - 1 - i
-		print col, row
+		print(col, row)
 		fig_filename = "%s_RS_%s.png" % (station, suffix)
 		fig_filespec = os.path.join(fig_folder, fig_filename)
 		img = pylab.imread(fig_filespec)
@@ -561,7 +563,7 @@ def plot_response_spectra_vs_magnitude():
 	row = 0
 	for i, trt in enumerate(trts):
 		col = i
-		print col, row
+		print(col, row)
 		fig_filename = "FAR1_RS_vs_%s_magnitude.PNG" % trt
 		fig_filespec = os.path.join(fig_folder, fig_filename)
 		img = pylab.imread(fig_filespec)
