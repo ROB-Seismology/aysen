@@ -1,5 +1,5 @@
 
-import os
+import os, sys
 import numpy as np
 import openquake.hazardlib as oqhazlib
 import mapping.layeredbasemap as lbm
@@ -7,6 +7,8 @@ import hazard.rshalib as rshalib
 from hazard.rshalib.source import SimpleUniformGridSourceModel
 from hazard.rshalib.source_estimation import estimate_epicenter_location_and_magnitude_from_intensities
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(SCRIPT_DIR)
 from aysenlib import (create_uniform_grid_source_model, plot_gridsearch_map,
 						read_evidence_site_info_from_gis,
 						TRT, USD, LSD, RAR, RMS, project_folder, gis_folder)
