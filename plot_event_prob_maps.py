@@ -148,7 +148,7 @@ for event in events:
 							integration_distance_dict=integration_distance_dict,
 							strict_intersection=strict_intersection)
 		#print(prob_dict)
-		probs = np.array(prob_dict.values())
+		probs = np.array(list(prob_dict.values()))
 		probs = probs[:, 0]
 		max_prob = probs.max()
 		max_prob_dict[event][ipe_name].append(max_prob)
@@ -175,7 +175,7 @@ for event in events:
 
 		fig_filename = "%s_%s_M=%.2f.%s" % (event, ipe_label, M, output_format)
 		fig_filespec = os.path.join(fig_folder, fig_filename)
-		#fig_filespec = None
+		fig_filespec = None
 
 		## Colormaps: RdBu_r, YlOrRd, BuPu, RdYlBu_r, Greys
 		site_model_gis_file = os.path.join(gis_folder, "Polygons_v3.shp")
@@ -190,7 +190,7 @@ for event in events:
 	for ipe_name in ipe_names:
 		img_basename = "%s_%s" % (event, ipe_label)
 		#create_animated_gif(fig_folder, img_basename)
-exit()
+#exit()
 
 
 ## Determine which sections have highest probability
@@ -198,8 +198,8 @@ for event in events:
 	print(event)
 	for ipe_name in ipe_names:
 		print(ipe_name)
-		sections = section_prob_dict[event][ipe_name].keys()
-		probs = [np.array(l) for l in section_prob_dict[event][ipe_name].values()]
+		sections = list(section_prob_dict[event][ipe_name].keys())
+		probs = [np.array(list(l)) for l in section_prob_dict[event][ipe_name].values()]
 		#print(probs[0])
 		mean_probs = np.array([p.mean() for p in probs])
 		max_probs = np.array([p.max() for p in probs])
@@ -228,8 +228,8 @@ for event in events:
 
 	fig_folder = os.path.join(base_fig_folder, event)
 	fig_filename = "%s_M_vs_prob.%s" % (event, output_format)
-	fig_filespec = os.path.join(fig_folder, fig_filename)
-	#fig_filespec = None
+	#fig_filespec = os.path.join(fig_folder, fig_filename)
+	fig_filespec = None
 	if fig_filespec:
 		pylab.savefig(fig_filespec, dpi=200)
 	else:
@@ -257,8 +257,8 @@ for event, color in zip(events, colors):
 	fig_folder = os.path.join(base_fig_folder)
 	#fig_filename = "events1-6_M_vs_prob_%s.%s" % (ipe_label, output_format)
 	fig_filename = "events7-10_M_vs_prob_%s.%s" % (ipe_label, output_format)
-	fig_filespec = os.path.join(fig_folder, fig_filename)
-	#fig_filespec = None
+	#fig_filespec = os.path.join(fig_folder, fig_filename)
+	fig_filespec = None
 	if fig_filespec:
 		pylab.savefig(fig_filespec, dpi=200)
 	else:
