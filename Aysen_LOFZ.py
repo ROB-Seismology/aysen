@@ -12,6 +12,7 @@ sys.path.append(SCRIPT_DIR)
 ## Folder locations
 from aysenlib import (project_folder, gis_folder)
 fig_folder = os.path.join(project_folder, "Figures")
+#fig_folder = r'C:\Temp'
 
 
 ## Event to plot
@@ -27,7 +28,7 @@ if __name__ == "__main__":
 	import mapping.layeredbasemap as lbm
 	from mapping.layeredbasemap.cm.norm import PiecewiseLinearNorm, LinearNorm
 	import eqcatalog
-	from aysenlib import get_roman_intensity
+	from eqcatalog.macro import get_roman_intensity
 
 
 	## Common parameters
