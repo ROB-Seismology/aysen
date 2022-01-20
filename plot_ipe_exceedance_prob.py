@@ -4,11 +4,12 @@ import scipy.stats
 import openquake.hazardlib as oqhazlib
 import hazard.rshalib as rshalib
 from hazard.rshalib.gsim import OqhazlibGMPE
+from eqcatalog.macro import get_roman_intensity
 import pylab
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(SCRIPT_DIR)
-from aysenlib import (get_roman_intensity, project_folder)
+from aysenlib import project_folder
 
 
 ipe_names = ["AtkinsonWald2007", "AllenEtAl2012"]
@@ -19,11 +20,11 @@ M, d = 6.5, 10
 Imin = 7
 intensities = np.linspace(Imin-4, Imin+4, 1001)
 dI = intensities[1] - intensities[0]
-fig_filename = "IPE_exceedance_prob.png"
-#fig_filename = None
+#fig_filename = "IPE_exceedance_prob.png"
+fig_filename = None
 
 for ipe_name, color in zip(ipe_names, colors):
-	oq_ipe = oqhazlib.gsim.get_available_gsims()[ipe_name]()
+	oq_ipe = rshalib.gsim.get_available_gsims()[ipe_name]()
 	[dist_metric] = oq_ipe.REQUIRES_DISTANCES
 	ipe = OqhazlibGMPE(ipe_name, "", dist_metric, 4, 9, 0, 300, "MW")
 	sctx, rctx, dctx, imt = ipe._get_contexts_and_imt(M, d, 0.1, 800, None, None, None, None, "strike-slip", "MMI", 0, 0.5)
@@ -34,13 +35,13 @@ for ipe_name, color in zip(ipe_names, colors):
 	probs *= dI
 
 	pylab.plot(intensities, probs, color, lw=2, label=ipe_name)
-	idx = (len(intensities) - 1) / 2
+	idx = int((len(intensities) - 1) / 2)
 
 	exc_intensities = intensities[intensities > Imin]
 	exc_probs = probs[intensities > Imin]
 	if len(exc_probs):
 		pylab.fill_between(exc_intensities, exc_probs, np.zeros_like(exc_probs),
-					np.ones_like(exc_probs), color=color, alpha=0.5)
+								color=color, alpha=0.5)
 		x = exc_intensities[exc_probs>1E-4].mean()
 		y = np.interp(x, exc_intensities, exc_probs)
 		label = "P(I>%s)=%.3f" % (get_roman_intensity(Imin), np.sum(exc_probs)/np.sum(probs))
