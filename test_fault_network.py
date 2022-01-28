@@ -5,8 +5,6 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(SCRIPT_DIR)
 from aysenlib import (read_fault_source_model, project_folder, gis_folder)
 
-
-
 gis_filename = "LOFZ_breukenmodel3.TAB"
 gis_filespec = os.path.join(gis_folder, gis_filename)
 

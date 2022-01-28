@@ -10,7 +10,7 @@ from create_animated_gif import create_animated_gif
 
 
 
-from aysenlib import (project_folder, gis_folder)
+from aysenlib import (project_folder, gis_folder, data_points, data_polygons, LOFZ_model)
 base_fig_folder = os.path.join(project_folder, "Figures", "Events", "v2", "NE=+0.5")
 
 ## Event names
@@ -72,7 +72,7 @@ for M in fault_mags:
 """
 
 ## Discretize faults as network
-fault_filespec = os.path.join(gis_folder, "LOFZ_breukenmodel4.TAB")
+fault_filespec = os.path.join(gis_folder, LOFZ_model)
 dM = 0.2
 fault_mags, fault_networks = [], []
 for M, source_model in read_fault_source_model_as_network(fault_filespec, dM=dM):
@@ -94,7 +94,7 @@ for event in events:
 
 	## Read MTD evidence
 	pe_thresholds, pe_site_models, ne_thresholds, ne_site_models = [], [], [], []
-	for geom_type in ["Polygons_v3", "Points"]:
+	for geom_type in [data_polygons, data_points]:
 		shapefile = os.path.join(gis_folder, "%s.shp" % geom_type)
 		(_pe_thresholds, _pe_site_models,
 		_ne_thresholds, _ne_site_models) = read_evidence_site_info_from_gis(shapefile, event, polygon_discretization)
