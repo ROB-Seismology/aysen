@@ -17,8 +17,14 @@ login_name = os.getlogin()
 if login_name == 'kris':
 	#project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
 	project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
+	data_points = "Points"
+	data_polygons = "Polygons_v3"
+	LOFZ_model = "LOFZ_breukenmodel4.TAB"
 elif login_name == 'kwils':
-	project_folder = r'C:\Users\kwils.UGENT\OneDrive - UGent\Ground motions\modelling-input'
+	project_folder = r'C:\Users\kwils.UGENT\OneDrive - UGent\Ground motions\Input data'
+	data_points = "Aysen-points"
+	data_polygons = "Aysen-polygons"
+	LOFZ_model = "LOFZ-faultmodel.TAB"
 gis_folder = os.path.join(project_folder, "GIS")
 
 
@@ -439,7 +445,7 @@ def read_evidence_site_info_from_txt(filespec, polygon_discretization=5):
 				else:
 					pe_thresholds.append(intensity)
 					pe_polygons.append(polygon)
-				lons, lats = [], []
+				#lons, lats = [], []
 			elif line:
 				if line[-1] in ('W', 'E', 'N', 'S'):
 					deg = int(line[:2])
