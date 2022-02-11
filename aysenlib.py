@@ -773,6 +773,7 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 	thematic_color.color_map.set_bad(thematic_color.color_map(0))
 
 	if source_model.get_point_sources() and not plot_point_ruptures:
+		dM = source.mfd.bin_width
 		edge_magnitudes = np.concatenate([source.mfd.get_magnitude_bin_edges(), [center_magnitudes[-1]+dM/2]])
 		mag_sizes = (center_magnitudes - 4) ** 2
 		thematic_size = lbm.ThematicStyleRanges(edge_magnitudes, mag_sizes, value_key='mag', labels=center_magnitudes)
