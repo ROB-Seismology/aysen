@@ -24,7 +24,7 @@ events = ['2007', 'SL-A', 'SL-B', 'SL-C', 'SL-CD', 'SL-D', 'SL-DE', 'SL-EF', 'SL
 #events = events[3:4]
 
 ## Method
-method = 'probabilistic_mean'
+method = 'probabilistic_highest'
 #method = 'forward'
 
 ## IPE and IMT
@@ -80,16 +80,16 @@ for event in events:
 	pe_thresholds = np.array(pe_thresholds)
 	ne_thresholds = np.array(ne_thresholds)
 
-	## Test NE+0/+0.5/+1
-	#ne_thresholds -= 0.5
+	## Subtract 0.5 from negative evidence thresholds (tested as best choice)
+	ne_thresholds -= 0.5
 
 	## Compute magnitudes and probabilities at grid points
-	# TODO: check with Katleen!
+	## ne_margin only required for non-probabilistic methods
 	ne_margin = 0 if 'probabilistic' in method else 0.25
 	result = estimate_epicenter_location_and_magnitude_from_intensities(
 					ipe_name, imt, grd_src_model, pe_sites, pe_thresholds,
 					ne_sites, ne_thresholds, method=method, ne_margin=ne_margin,
-					mag_pdf_idx='max')
+					mag_pdf_loc='max')
 	if 'probabilistic' in method:
 		(mag_grid, rms_grid, mag_pdf, pe_curves, ne_curves) = result
 	else:
@@ -120,7 +120,7 @@ for event in events:
 							pe_site_models, ne_site_models,
 							site_model_gis_file=site_model_gis_file,
 							text_box=text_box, rms_is_prob=rms_is_prob,
-							plot_rms_as_alpha=False, plot_epicenter_as="area")
+							plot_rms_as_alpha=False, plot_epicenter_as="both")
 
 	fig_filespec = os.path.join(fig_folder, "%s_grid_%s.%s")
 	fig_filespec %= (event, method, output_format)
@@ -131,10 +131,10 @@ for event in events:
 
 	## Plot probabilities
 	if 'probabilistic' in method:
-		fig_filespec =  os.path.join(fig_folder, "%s_pdf_%s.%s")
-		fig_filespec %= (event, method, output_format)
+		fig_filespec =  os.path.join(fig_folder, "%s_pdf_probabilistic.%s")
+		fig_filespec %= (event, output_format)
 		#fig_filespec = None
-		#mag_pdf.plot(fig_filespec=None, ylabel='Probability')
+		mag_pdf.plot(fig_filespec=None, ylabel='Probability', title=event)
 
 		datasets = []
 		num_pe, num_ne = len(pe_sites), len(ne_sites)
