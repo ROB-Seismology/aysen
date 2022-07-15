@@ -1,6 +1,7 @@
 # -*- coding: iso-Latin-1 -*-
 
 import os
+import getpass
 import numpy as np
 import matplotlib
 import pylab
@@ -13,7 +14,7 @@ from hazard.rshalib.source.read_from_gis import import_source_model_from_gis
 
 
 ## Folder locations
-login_name = os.getlogin()
+login_name = getpass.getuser()
 if login_name == 'kris':
 	#project_folder = r"C:\Users\kris\Documents\Publications\2017 - Aysen"
 	project_folder = r"E:\Home\_kris\Publications\2017 - Aysen"
