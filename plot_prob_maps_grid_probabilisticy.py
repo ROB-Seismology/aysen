@@ -155,14 +155,16 @@ for event in events:
 		#mag_pdf.plot(fig_filespec=None, ylabel='Probability', title=event)
 
 		datasets = []
-		num_pe, num_ne = len(pe_sites), len(ne_sites)
+		#num_pe, num_ne = len(pe_sites), len(ne_sites)
+		num_pe, num_ne = 0, 0
 		for p in range(num_pe):
 			datasets.append((mag_pdf.values, pe_curves[p]))
 		for n in range(num_ne):
 			datasets.append((mag_pdf.values, ne_curves[n]))
-		prod = np.prod(pe_curves, axis=0) * np.prod(ne_curves, axis=0)
+		if num_pe + num_ne > 0:
+			prod = np.prod(pe_curves, axis=0) * np.prod(ne_curves, axis=0)
+			datasets.append((mag_pdf.values, prod))
 
-		datasets.append((mag_pdf.values, prod))
 		if norm_probs_num_sites:
 			datasets.append((mag_pdf.values, mag_pdf.probs))
 		colors = ['m'] * num_pe + ['c'] * num_ne + ['k'] * 2
