@@ -18,46 +18,58 @@ fig_folder = os.path.join(project_folder, "Figures", "Events", "grid_probabilist
 output_format = 'png'
 
 ## Event names
-events = ['2007', 'SL-A', 'SL-B', 'SL-C', 'SL-CD', 'SL-D', 'SL-DE', 'SL-EF', 'SL-F', 'SL-G']
+#events = ['2007', 'SL-A', 'SL-B', 'SL-C', 'SL-CD', 'SL-D', 'SL-DE', 'SL-EF', 'SL-F', 'SL-G']
 #events = ['SL-A']
-#events = ["2007"]
+events = ["2007"]
 #events = events[3:4]
 
 ## Method
 method = 'probabilistic_highest'
 #method = 'forward'
 
+## Normalization options for probabilistic method
+norm_probs_num_sites = 1
+norm_max_only = True
+
 ## IPE and IMT
 ipe_name = "BakunWentworth1997WithSigma"
 #ipe_name = "AtkinsonWald2007"
 imt = oqhazlib.imt.MMI()
+truncation_level = 2
 
 polygon_discretization = 2.5
 
+# TODO: implement partial evidence in fault model
 
 ## Construct grid source model
 grid_outline = (-74, -72, -46.25, -44.8)
-grid_spacing = 0.1
+## Grid centered on fault closest to 2007 rupture
+#lon, lat = -73.055, -45.389
+#grid_outline = (lon-1, lon+1, lat-0.7, lat+0.7)
+grid_spacing = (0.1, 0.1)
 
 min_mag, max_mag, mag_bin_width = 4.5, 8.5, 0.2
-depth = 10
-strike, dip, rake = 20, 80, 180
+## Note: depth has no impact because BakunWentworth IPE uses RJB
+depth = 1
+strike, dip, rake = 30, 80, 180
 point_msr = oqhazlib.scalerel.PointMSR()
 wc1994_msr = oqhazlib.scalerel.WC1994()
 
 grd_src_model = SimpleUniformGridSourceModel(grid_outline, grid_spacing,
 			min_mag, max_mag + mag_bin_width, mag_bin_width, depth,
 			strike, dip, rake, wc1994_msr, USD, LSD, RMS, RAR, TRT)
+
 lon_grid, lat_grid = grd_src_model.lon_grid, grd_src_model.lat_grid
 
 
 ## Loop over events
 for event in events:
-	print(event)
+	print('Event %s' % event)
 	## Read MTD evidence
 	pe_site_models, ne_site_models = [], []
 	pe_thresholds, pe_sites, ne_thresholds, ne_sites = [], [], [], []
 	for geom_type in ["Polygons_v3", "Points"]:
+		print('%s evidence:' % geom_type)
 		shapefile = os.path.join(gis_folder, "%s.shp" % geom_type)
 		(_pe_thresholds, _pe_site_models,
 		_ne_thresholds, _ne_site_models) = read_evidence_site_info_from_gis(shapefile,
@@ -76,6 +88,7 @@ for event in events:
 				print("-%s: %s" % (ne_site.name, ne_threshold))
 		print(sum([len(pesm) for pesm in _pe_site_models]), sum([len(nesm)
 						for nesm in _ne_site_models]))
+	print('Total:')
 	print(len(pe_sites), len(ne_sites))
 	pe_thresholds = np.array(pe_thresholds)
 	ne_thresholds = np.array(ne_thresholds)
@@ -89,7 +102,8 @@ for event in events:
 	result = estimate_epicenter_location_and_magnitude_from_intensities(
 					ipe_name, imt, grd_src_model, pe_sites, pe_thresholds,
 					ne_sites, ne_thresholds, method=method, ne_margin=ne_margin,
-					mag_pdf_loc='max')
+					mag_pdf_loc='max', norm_probs_num_sites=norm_probs_num_sites,
+					norm_max_only=norm_max_only, truncation_level=truncation_level)
 	if 'probabilistic' in method:
 		(mag_grid, rms_grid, mag_pdf, pe_curves, ne_curves) = result
 	else:
@@ -122,19 +136,23 @@ for event in events:
 							text_box=text_box, rms_is_prob=rms_is_prob,
 							plot_rms_as_alpha=False, plot_epicenter_as="both")
 
-	fig_filespec = os.path.join(fig_folder, "%s_grid_%s.%s")
-	fig_filespec %= (event, method, output_format)
+	norm_str = {True: '_normed', False: ''}[norm_probs_num_sites>0]
+	if not 'probabilistic' in method:
+		norm_str = ''
+	fig_filespec = os.path.join(fig_folder, "%s_grid_%s%s.%s")
+	fig_filespec %= (event, method, norm_str, output_format)
 	#fig_filespec = None
 
 	dpi = 200 if fig_filespec else 90
 	map.plot(fig_filespec=fig_filespec, dpi=dpi)
 
-	## Plot probabilities
+	## Plot probabilies (PDF)
+	# TODO: make separate function?
 	if 'probabilistic' in method:
-		fig_filespec =  os.path.join(fig_folder, "%s_pdf_probabilistic.%s")
-		fig_filespec %= (event, output_format)
+		fig_filespec =  os.path.join(fig_folder, "%s_pdf_probabilistic%s.%s")
+		fig_filespec %= (event, norm_str, output_format)
 		#fig_filespec = None
-		mag_pdf.plot(fig_filespec=None, ylabel='Probability', title=event)
+		#mag_pdf.plot(fig_filespec=None, ylabel='Probability', title=event)
 
 		datasets = []
 		num_pe, num_ne = len(pe_sites), len(ne_sites)
@@ -143,15 +161,20 @@ for event in events:
 		for n in range(num_ne):
 			datasets.append((mag_pdf.values, ne_curves[n]))
 		prod = np.prod(pe_curves, axis=0) * np.prod(ne_curves, axis=0)
+
 		datasets.append((mag_pdf.values, prod))
-		colors = ['m'] * num_pe + ['c'] * num_ne + ['k']
+		if norm_probs_num_sites:
+			datasets.append((mag_pdf.values, mag_pdf.probs))
+		colors = ['m'] * num_pe + ['c'] * num_ne + ['k'] * 2
 		labels = (['Positive'] + ['_nolegend_'] * (num_pe - 1)
 					+ ['Negative'] + ['_nolegend_'] * (num_ne - 1)
 					+ ['Product'])
-		linestyles = ['-'] * (num_pe + num_ne) + ['--']
+		if norm_probs_num_sites:
+			labels.append('Product (normed)')
+		linestyles = ['-'] * (num_pe + num_ne) + ['-', '--']
 		title = 'Event %s' % event
 
 		dpi = 200 if fig_filespec else 90
 		plot_xy(datasets, colors=colors, labels=labels, linestyles=linestyles,
-					xlabel='Magnitude', ylabel='Probability', title=title,
-					fig_filespec=fig_filespec, dpi=dpi)
+					xlabel='Magnitude', ylabel='Probability', xmin=4.5, xmax=9.0,
+					title=title, fig_filespec=fig_filespec, dpi=dpi)
