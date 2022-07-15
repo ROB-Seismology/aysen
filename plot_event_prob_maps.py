@@ -14,7 +14,8 @@ from aysenlib import (project_folder, gis_folder, data_points, data_polygons, LO
 base_fig_folder = os.path.join(project_folder, "Figures", "Events", "v2", "NE=+0.5")
 
 ## Event names
-events = ['2007', 'SL-G', 'SL-F', 'SL-EF', 'SL-DE', 'SL-D', 'SL-CD', 'SL-C', 'SL-B', 'SL-A']
+#events = ['2007', 'SL-G', 'SL-F', 'SL-EF', 'SL-DE', 'SL-D', 'SL-CD', 'SL-C', 'SL-B', 'SL-A']
+events = ['2007']
 #events = ['SL-A']
 #events = ['SL-EF', 'SL-DE', 'SL-A']
 #events = ["SL-A"]
@@ -54,7 +55,7 @@ strict_intersection = True
 ## Map parameters
 #map_region = (-74, -72, -46, -44.5)
 map_region = (-74, -72, -46.25, -44.8)
-output_format = "pdf"
+output_format = "png"
 
 
 ## Read fault source model
@@ -140,57 +141,58 @@ for event in events:
 			gmpe_system_def = {TRT: rshalib.pmf.GMPEPMF(models, weights)}
 			integration_distance_dict = {"AtkinsonWald2007": (None, 30)}
 
-	for M, source_model in zip(fault_mags, fault_networks):
-		## Compute rupture probabilities
-		prob_dict = calc_rupture_probability_from_ground_motion_thresholds(
-							source_model, gmpe_system_def, imt, pe_site_models,
-							pe_thresholds, ne_site_models, ne_thresholds, truncation_level,
-							integration_distance_dict=integration_distance_dict,
-							strict_intersection=strict_intersection)
-		#print(prob_dict)
-		probs = np.array(list(prob_dict.values()))
-		probs = probs[:, 0]
-		max_prob = probs.max()
-		max_prob_dict[event][ipe_name].append(max_prob)
-		print(M, max_prob)
-		for rup_name, prob in zip(prob_dict.keys(), probs):
-			for section in rup_name.split('+'):
-				if not section in section_prob_dict[event][ipe_name]:
-					section_prob_dict[event][ipe_name][section] = [prob]
-				else:
-					section_prob_dict[event][ipe_name][section].append(prob)
+		print('Computing rupture probabilities...')
+		for M, source_model in zip(fault_mags, fault_networks):
+			## Compute rupture probabilities
+			prob_dict = calc_rupture_probability_from_ground_motion_thresholds(
+								source_model, gmpe_system_def, imt, pe_site_models,
+								pe_thresholds, ne_site_models, ne_thresholds, truncation_level,
+								integration_distance_dict=integration_distance_dict,
+								strict_intersection=strict_intersection)
+			#print(prob_dict)
+			probs = np.array(list(prob_dict.values()))
+			probs = probs[:, 0]
+			max_prob = probs.max()
+			max_prob_dict[event][ipe_name].append(max_prob)
+			print('M=%.2f, max_prob=%.2f' % (M, max_prob))
+			for rup_name, prob in zip(prob_dict.keys(), probs):
+				for section in rup_name.split('+'):
+					if not section in section_prob_dict[event][ipe_name]:
+						section_prob_dict[event][ipe_name][section] = [prob]
+					else:
+						section_prob_dict[event][ipe_name][section].append(prob)
 
-		## Plot
-		if "WithSigma" in ipe_name:
-			ipe_label = ipe_name[:ipe_name.find("WithSigma")]
-		else:
-			ipe_label = ipe_name
+			## Plot
+			print('Plotting map for M=%.2f (max_prob=%.2f)' % (M, _max_prob))
+			if "WithSigma" in ipe_name:
+				ipe_label = ipe_name[:ipe_name.find("WithSigma")]
+			else:
+				ipe_label = ipe_name
 
-		#text_box = "Event: %s\nIPE: %s\nM: %.2f, Pmax: %.2f"
-		text_box = "Event: %s\nM: %.2f\nPmax: %.2f"
-		text_box %= (event, M, max_prob)
+			#text_box = "Event: %s\nIPE: %s\nM: %.2f, Pmax: %.2f"
+			text_box = "Event: %s\nM: %.2f\nPmax: %.2f"
+			text_box %= (event, M, max_prob)
 
-		#title = "Event: %s, IPE: %s, M=%.2f" % (event, ipe_name, M)
-		title = ""
+			#title = "Event: %s, IPE: %s, M=%.2f" % (event, ipe_name, M)
+			title = ""
 
-		fig_filename = "%s_%s_M=%.2f.%s" % (event, ipe_label, M, output_format)
-		fig_filespec = os.path.join(fig_folder, fig_filename)
-		fig_filespec = None
+			fig_filename = "%s_%s_M=%.2f.%s" % (event, ipe_label, M, output_format)
+			fig_filespec = os.path.join(fig_folder, fig_filename)
+			fig_filespec = None
 
-		## Colormaps: RdBu_r, YlOrRd, BuPu, RdYlBu_r, Greys
-		site_model_gis_file = os.path.join(gis_folder, "Polygons_v3.shp")
-		if np.isclose(M, events_mags[event], atol=0.01):
+			## Colormaps: RdBu_r, YlOrRd, BuPu, RdYlBu_r, Greys
+			site_model_gis_file = os.path.join(gis_folder, "Polygons_v3.shp")
+			#if np.isclose(M, events_mags[event], atol=0.01):
 			plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
-										map_region, plot_point_ruptures=True, colormap="RdYlBu_r",
-										title=title, text_box=text_box, site_model_gis_file=site_model_gis_file,
-										fig_filespec=fig_filespec)
+											map_region, plot_point_ruptures=True, colormap="RdYlBu_r",
+											title=title, text_box=text_box, site_model_gis_file=site_model_gis_file,
+											fig_filespec=fig_filespec)
 
 
 	## Generate animated GIF
 	for ipe_name in ipe_names:
 		img_basename = "%s_%s" % (event, ipe_label)
 		#create_animated_gif(fig_folder, img_basename)
-#exit()
 
 
 ## Determine which sections have highest probability
@@ -234,6 +236,8 @@ for event in events:
 		pylab.savefig(fig_filespec, dpi=200)
 	else:
 		pylab.show()
+
+sys.exit()
 
 
 ## Plot max_prob vs magnitude for different events in one plot
