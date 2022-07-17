@@ -146,7 +146,8 @@ for event in events:
 			## Compute rupture probabilities
 			prob_dict = calc_rupture_probability_from_ground_motion_thresholds(
 								source_model, gmpe_system_def, imt, pe_site_models,
-								pe_thresholds, ne_site_models, ne_thresholds, truncation_level,
+								pe_thresholds, ne_site_models, ne_thresholds,
+								truncation_level=truncation_level,
 								integration_distance_dict=integration_distance_dict,
 								strict_intersection=strict_intersection)
 			#print(prob_dict)
@@ -163,7 +164,7 @@ for event in events:
 						section_prob_dict[event][ipe_name][section].append(prob)
 
 			## Plot
-			print('Plotting map for M=%.2f (max_prob=%.2f)' % (M, _max_prob))
+			print('Plotting map for M=%.2f (max_prob=%.2f)' % (M, max_prob))
 			if "WithSigma" in ipe_name:
 				ipe_label = ipe_name[:ipe_name.find("WithSigma")]
 			else:
