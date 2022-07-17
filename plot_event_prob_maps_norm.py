@@ -164,7 +164,8 @@ for event in events:
 			## Compute rupture probabilities (without normalization)
 			prob_dict = calc_rupture_probability_from_ground_motion_thresholds(
 								source_model, gmpe_system_def, imt, pe_site_models,
-								pe_thresholds, ne_site_models, ne_thresholds, truncation_level,
+								pe_thresholds, ne_site_models, ne_thresholds,
+								truncation_level=truncation_level,
 								integration_distance_dict=integration_distance_dict,
 								strict_intersection=strict_intersection,
 								norm_probs_num_sites={True: 0, False: norm_probs_num_sites}[norm_max_only])
