@@ -19,7 +19,7 @@ flt_network = src_model.get_fault_network(allow_triple_junctions=allow_triple_ju
 flt_network.check_consistency()
 print(flt_network.fault_links['0#09'])
 
-src_model.get_linked_subfaults([['1#02', '1#01', '12#29']])
+print(src_model.get_linked_subfaults([['1#02', '1#01', '12#29']]))
 #exit()
 
 #connections = flt_network.get_connections('0#01', 25, allow_triple_junctions=allow_triple_junctions)

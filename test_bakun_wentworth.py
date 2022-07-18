@@ -26,15 +26,9 @@ point_msr = oqhazlib.scalerel.PointMSR()
 
 method = "reverse"
 
-if method == "reverse":
-	grd_src_model = SimpleUniformGridSourceModel(grid_outline, grid_spacing,
-			min_mag, min_mag + mag_bin_width, mag_bin_width, depth,
-			strike, dip, rake, point_msr, USD, LSD, RMS, RAR, TRT)
-
-elif method == "forward":
-	grd_src_model = SimpleUniformGridSourceModel(grid_outline, grid_spacing,
-			min_mag, max_mag, mag_bin_width, depth,
-			strike, dip, rake, point_msr, USD, LSD, RMS, RAR, TRT)
+grd_src_model = SimpleUniformGridSourceModel(grid_outline, grid_spacing,
+		min_mag, max_mag, mag_bin_width, depth,
+		strike, dip, rake, point_msr, USD, LSD, RMS, RAR, TRT)
 
 ## IPE and IMT
 ipe_name = "BakunWentworth1997"
@@ -96,7 +90,7 @@ print("BakunWentworth %s" % method)
 (mag_grid, rms_grid) = (
 	estimate_epicenter_location_and_magnitude_from_intensities(
 	ipe_name, imt, grd_src_model, pe_sites, pe_intensities,
-	ne_sites, ne_intensities, method=method, mag_bounds=(min_mag, max_mag)))
+	ne_sites, ne_intensities, method=method, ne_margin=0.25))
 idx = np.unravel_index(rms_grid.argmin(), rms_grid.shape)
 print(mag_grid[idx], lon_grid[idx], lat_grid[idx])
 

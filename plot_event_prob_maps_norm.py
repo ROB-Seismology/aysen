@@ -1,3 +1,8 @@
+"""
+Version of plot_event_prob_maps.py demonstrating different normalization options
+"""
+
+
 import os, sys
 import numpy as np
 
@@ -11,7 +16,7 @@ from create_animated_gif import create_animated_gif
 
 
 from aysenlib import (project_folder, gis_folder, data_points, data_polygons, LOFZ_model)
-base_fig_folder = os.path.join(project_folder, "Figures", "Events", "v2", "NE=+0.5")
+base_fig_folder = os.path.join(project_folder, "Figures", "Events", "v2", "norm_test")
 
 ## Event names
 #events = ['2007', 'SL-G', 'SL-F', 'SL-EF', 'SL-DE', 'SL-D', 'SL-CD', 'SL-C', 'SL-B', 'SL-A']
@@ -81,6 +86,13 @@ for M, source_model in read_fault_source_model_as_network(fault_filespec, dM=dM)
 	fault_networks.append(source_model)
 
 
+## Normalization options
+#norm_probs_num_sites = 1
+#norm_max_only = True
+norm_probs_num_sites = 1
+norm_max_only = False
+
+
 ## Loop over events
 max_prob_dict = {}
 section_prob_dict = {}
@@ -89,9 +101,11 @@ for event in events:
 	max_prob_dict[event] = {}
 	section_prob_dict[event] = {}
 
-	fig_folder = os.path.join(base_fig_folder, event)
+	subfolder = {True: 'norm_max_only',
+					False: 'norm_num_sites=%d' % norm_probs_num_sites}[norm_max_only]
+	fig_folder = os.path.join(base_fig_folder, subfolder, event)
 	if not os.path.exists(fig_folder):
-		os.mkdir(fig_folder)
+		os.makedirs(fig_folder)
 
 	## Read MTD evidence
 	pe_thresholds, pe_site_models, ne_thresholds, ne_site_models = [], [], [], []
@@ -119,13 +133,16 @@ for event in events:
 	pe_thresholds = np.array(pe_thresholds) + intensity_correction
 	ne_thresholds = np.array(ne_thresholds) + intensity_correction
 
+	## Subtract 0.5 from negative evidence thresholds (tested as best choice)
 	ne_thresholds -= 0.5
 
+	num_sites = 0
 	for pe_site_model, pe_threshold in zip(pe_site_models, pe_thresholds):
 		print("+%s (n=%d): %s" % (pe_site_model.name.encode(errors='replace'), len(pe_site_model), pe_threshold))
+		num_sites += len(pe_site_model)
 	for ne_site_model, ne_threshold in zip(ne_site_models, ne_thresholds):
 		print("-%s (n=%d): %s" % (ne_site_model.name.encode(errors='replace'), len(ne_site_model), ne_threshold))
-
+		num_sites += len(ne_site_model)
 
 	## Construct ground-motion model
 	for ipe_name in ipe_names:
@@ -142,15 +159,18 @@ for event in events:
 			integration_distance_dict = {"AtkinsonWald2007": (None, 30)}
 
 		print('Computing rupture probabilities...')
+		M_prob_dicts = []
 		for M, source_model in zip(fault_mags, fault_networks):
-			## Compute rupture probabilities
+			## Compute rupture probabilities (without normalization)
 			prob_dict = calc_rupture_probability_from_ground_motion_thresholds(
 								source_model, gmpe_system_def, imt, pe_site_models,
 								pe_thresholds, ne_site_models, ne_thresholds,
 								truncation_level=truncation_level,
 								integration_distance_dict=integration_distance_dict,
-								strict_intersection=strict_intersection)
+								strict_intersection=strict_intersection,
+								norm_probs_num_sites={True: 0, False: norm_probs_num_sites}[norm_max_only])
 			#print(prob_dict)
+			M_prob_dicts.append(prob_dict)
 			probs = np.array(list(prob_dict.values()))
 			probs = probs[:, 0]
 			max_prob = probs.max()
@@ -163,8 +183,28 @@ for event in events:
 					else:
 						section_prob_dict[event][ipe_name][section].append(prob)
 
-			## Plot
-			print('Plotting map for M=%.2f (max_prob=%.2f)' % (M, max_prob))
+		## Plot
+		if norm_max_only:
+			max_prob = np.max(max_prob_dict[event][ipe_name])
+			scale_factor = (max_prob ** (norm_probs_num_sites/float(num_sites))) / max_prob
+			print('Plotting maps (max_prob: %.2f, scale_factor: %.2f)'
+					% (max_prob, scale_factor))
+		else:
+			print('Plotting maps...')
+		for m, M in enumerate(fault_mags):
+			source_model = fault_networks[m]
+			prob_dict = M_prob_dicts[m]
+			## Normalize rupture probabilities
+			if norm_max_only:
+				_max_prob = 0
+				for key, probs in prob_dict.items():
+					probs *= scale_factor
+					if probs.max() > _max_prob:
+						_max_prob = probs.max()
+			else:
+				_max_prob = max_prob_dict[event][ipe_name][m]
+			print('Plotting map for M=%.2f (max_prob=%.2f)' % (M, _max_prob))
+
 			if "WithSigma" in ipe_name:
 				ipe_label = ipe_name[:ipe_name.find("WithSigma")]
 			else:
@@ -172,14 +212,14 @@ for event in events:
 
 			#text_box = "Event: %s\nIPE: %s\nM: %.2f, Pmax: %.2f"
 			text_box = "Event: %s\nM: %.2f\nPmax: %.2f"
-			text_box %= (event, M, max_prob)
+			text_box %= (event, M, _max_prob)
 
 			#title = "Event: %s, IPE: %s, M=%.2f" % (event, ipe_name, M)
 			title = ""
 
 			fig_filename = "%s_%s_M=%.2f.%s" % (event, ipe_label, M, output_format)
 			fig_filespec = os.path.join(fig_folder, fig_filename)
-			fig_filespec = None
+			#fig_filespec = None
 
 			## Colormaps: RdBu_r, YlOrRd, BuPu, RdYlBu_r, Greys
 			site_model_gis_file = os.path.join(gis_folder, "Polygons_v3.shp")
@@ -229,10 +269,10 @@ for event in events:
 	pylab.title("Event: %s" % event)
 	pylab.legend(loc=3)
 
-	fig_folder = os.path.join(base_fig_folder, event)
+	fig_folder = os.path.join(base_fig_folder, subfolder, event)
 	fig_filename = "%s_M_vs_prob.%s" % (event, output_format)
-	#fig_filespec = os.path.join(fig_folder, fig_filename)
-	fig_filespec = None
+	fig_filespec = os.path.join(fig_folder, fig_filename)
+	#fig_filespec = None
 	if fig_filespec:
 		pylab.savefig(fig_filespec, dpi=200)
 	else:
